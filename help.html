@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="utf-8" />
+<title>flocks.js — Guia</title>
+<style>
+  body {
+    margin: 0; padding: 40px 20px 80px;
+    background: #0d0d10; color: #e8e8e8;
+    font: 15px/1.6 system-ui, sans-serif;
+  }
+  main { max-width: 720px; margin: 0 auto; }
+  h1 { font-size: 26px; margin-bottom: 4px; }
+  h2 {
+    font-size: 18px; margin-top: 48px; padding-bottom: 6px;
+    border-bottom: 1px solid #333; color: #5cd6ff;
+  }
+  h3 { font-size: 15px; margin-top: 28px; color: #ffd25c; }
+  p, li { color: #c9c9c9; }
+  code {
+    background: #1c1c22; border-radius: 4px; padding: 1px 6px;
+    font: 13px/1.5 "SF Mono", Menlo, Consolas, monospace; color: #ffd25c;
+  }
+  pre {
+    background: #141419; border: 1px solid #2a2a33; border-radius: 8px;
+    padding: 14px 16px; overflow-x: auto;
+  }
+  pre code { background: none; padding: 0; color: #d8d8d8; }
+  pre code .c { color: #6a737d; }        /* comentaris */
+  pre code .k { color: #5cd6ff; }        /* mètodes del floc */
+  table { border-collapse: collapse; width: 100%; margin: 12px 0; }
+  td { padding: 5px 10px; border-bottom: 1px solid #26262e; vertical-align: top; }
+  td:first-child { white-space: nowrap; }
+  .sub { color: #888; font-size: 14px; }
+  .tag {
+    display: inline-block; background: #1c1c22; border: 1px solid #2a2a33;
+    border-radius: 4px; padding: 0 8px; margin-right: 6px;
+    font: 12px monospace; color: #aaa;
+  }
+</style>
+</head>
+<body>
+<main>
+
+<h1>flocks.js</h1>
+<p class="sub">Llibreria de live coding de flocs (boids) per sobre de <b>p5.js</b> + <b>p5.sound</b>.
+Pensada per escriure poc i veure resultats immediats.</p>
+
+<h2>Com funciona l'entorn</h2>
+<p>L'aplicació (<code>index.html</code>) carrega p5.js, p5.sound, la llibreria
+(<code>flocks.js</code>) i un mini-editor (<code>editor.js</code>). El codi que escrius
+a l'editor es divideix en dues funcions:</p>
+<table>
+  <tr><td><code>init()</code></td><td>s'executa <b>un cop</b> cada vegada que executes (Ctrl/Cmd+Enter). Aquí es creen o es modifiquen els flocs.</td></tr>
+  <tr><td><code>live()</code></td><td>s'executa <b>a cada frame</b>. Aquí es dibuixa i es modula.</td></tr>
+</table>
+<p><span class="tag">Ctrl/Cmd+Enter</span> executa els canvis sense reiniciar
+<span class="tag">Ctrl+E</span> amaga/mostra l'editor
+<span class="tag">h</span> referència ràpida en pantalla</p>
+<p><b>Important:</b> no facis servir <code>let</code>/<code>const</code> al nivell superior;
+declara variables globals planes (<code>f = flock(...)</code>) perquè el re-run no peti.</p>
+
+<h2>Crear un floc</h2>
+<pre><code>f = flock()        <span class="c">// 20 ocells, ja es veu i ja reacciona a la música</span>
+f = flock(50)      <span class="c">// amb 50 ocells</span>
+f.add(10)          <span class="c">// afegeix 10 ocells en calent</span>
+f.remove(10)       <span class="c">// en treu 10</span></code></pre>
+<p>Tots els mètodes són <b>encadenables</b>:</p>
+<pre><code>f = flock(40)
+  .<span class="k">col</span>('#ff5c8a')   <span class="c">// color (nom, hex o color() de p5)</span>
+  .<span class="k">rad</span>(4)          <span class="c">// radi dels cercles</span>
+  .<span class="k">spd</span>(2.5)        <span class="c">// velocitat base (i màxima)</span></code></pre>
+
+<h2>Comportament del floc</h2>
+<p>Cada ocell combina les tres regles clàssiques dels boids més una deriva de
+soroll Perlin que els dona organicitat:</p>
+<table>
+  <tr><td><code>.per(140)</code></td><td>radi de percepció: fins on veu els veïns</td></tr>
+  <tr><td><code>.coh(1.8)</code></td><td>cohesió: atracció cap al centre del grup</td></tr>
+  <tr><td><code>.ali(2)</code></td><td>alineació: seguir la direcció dels veïns</td></tr>
+  <tr><td><code>.sep(2)</code></td><td>separació: no xocar</td></tr>
+  <tr><td><code>.wnd(0.3)</code></td><td>deriva de soroll (0 = boids purs)</td></tr>
+  <tr><td><code>.nsc(0.005)</code></td><td>escala espacial del soroll (petit = camps suaus i grans)</td></tr>
+</table>
+<p>Els ocells fan <b>wrap-around</b>: quan surten per una vora, tornen per l'oposada.</p>
+
+<h2>Direcció principal (camp de soroll)</h2>
+<p>Pots donar al floc una direcció dominant que segueix un camp de soroll:</p>
+<pre><code>f.<span class="k">dir</span>(0, 0.2)        <span class="c">// cap a la dreta, gairebé en línia recta</span>
+f.<span class="k">dir</span>(QUARTER_PI, 1) <span class="c">// diagonal, camp molt variable</span>
+f.<span class="k">dirOff</span>()          <span class="c">// la desactiva</span></code></pre>
+<p>El primer paràmetre és l'<b>angle en radians</b>; el segon és la <b>variabilitat</b>:
+amb <code>0</code> els ocells van gairebé rectes; amb <code>1</code> el camp els desvia molt.
+Un tercer paràmetre opcional regula la força de l'ajust (1 per defecte).</p>
+
+<h2>Dibuix: cercles o línia contínua</h2>
+<pre><code>f.<span class="k">linia</span>(true)   <span class="c">// en lloc de cercles, traç continu</span></code></pre>
+<p>Amb <code>linia(true)</code> cada ocell dibuixa una línia entre la seva posició anterior
+i l'actual, amb un gruix igual al diàmetre del cercle. Combinat amb una estela
+llarga (<code>trail(0.02)</code>) genera traços que es fonen suaument.</p>
+
+<h2>Reactivitat al so</h2>
+<p>La llibreria escolta el micro i normalitza 4 senyals (0..1, amb porta de soroll):</p>
+<table>
+  <tr><td><code>bass()</code></td><td>baixos (20–800 Hz)</td></tr>
+  <tr><td><code>mid()</code></td><td>mitjans (800–2600 Hz)</td></tr>
+  <tr><td><code>treble()</code></td><td>aguts (2,6–14 kHz)</td></tr>
+  <tr><td><code>amp()</code></td><td>volum general</td></tr>
+</table>
+<p>Per defecte cada floc ja reacciona sol: el <b>radi</b> batega amb els baixos i la
+<b>velocitat</b> amb els aguts. Es regula amb:</p>
+<table>
+  <tr><td><code>.rg(3)</code></td><td>sensibilitat del radi als baixos</td></tr>
+  <tr><td><code>.sg(4)</code></td><td>sensibilitat de la velocitat als aguts</td></tr>
+  <tr><td><code>.calm()</code></td><td>desactiva la reacció automàtica</td></tr>
+</table>
+<p>Per lligar <b>qualsevol</b> paràmetre a <b>qualsevol</b> banda, fes servir
+<code>react(prop, fn, amt)</code>, on <code>prop</code> pot ser <code>'r'</code> (radi),
+<code>'sp'</code> (velocitat) o <code>'wnd'</code> (deriva), i <code>fn</code> qualsevol
+funció que retorni un nombre:</p>
+<pre><code>f.<span class="k">react</span>('r',   mid,    10)   <span class="c">// el radi creix amb els mitjans</span>
+f.<span class="k">react</span>('sp',  bass,   2)    <span class="c">// la velocitat, amb els baixos</span>
+f.<span class="k">react</span>('wnd', treble, 1.5)  <span class="c">// la deriva, amb els aguts</span>
+f.<span class="k">react</span>('r',   () =&gt; mouseX / width, 20) <span class="c">// o el que vulguis</span></code></pre>
+<p><code>amt</code> és quant s'hi suma quan el senyal val 1. Pots apilar diverses crides
+<code>react()</code> sobre el mateix floc. Amb <code>soundMeter()</code> veus les barres
+de so per calibrar a ull.</p>
+
+<h2>Pantalla i estela</h2>
+<table>
+  <tr><td><code>trail(0.05)</code></td><td>rastre: 0 = infinit, 1 = sense rastre (crida'l dins de <code>live()</code>)</td></tr>
+  <tr><td><code>fade()</code></td><td>pinta el fons amb l'estela actual (ja ho fa el draw de l'editor)</td></tr>
+</table>
+
+<h2>Exemples</h2>
+<p>Enganxa qualsevol d'aquests blocs sencers a l'editor i prem Ctrl/Cmd+Enter.</p>
+
+<h3>1 · Riu de tinta <span class="sub">— traç continu i direcció gairebé recta</span></h3>
+<pre><code>function init() {
+  riu = flock(40)
+    .col('#5cd6ff')
+    .rad(3).spd(2)
+    .per(60).ali(2).coh(0.5)
+    .dir(0, 0.15)    <span class="c">// corrent cap a la dreta, quasi lineal</span>
+    .linia(true)     <span class="c">// traç continu en lloc de cercles</span>
+    .calm()          <span class="c">// sense reacció al so</span>
+}
+
+function live() {
+  trail(0.02)        <span class="c">// estela molt llarga: les línies es fonen a poc a poc</span>
+  riu.draw()
+}</code></pre>
+
+<h3>2 · Bombola de so <span class="sub">— tot lligat a la música</span></h3>
+<pre><code>function init() {
+  bombolla = flock(30)
+    .col('#ff5c8a')
+    .rad(5).spd(1.5)
+    .per(120).coh(2).sep(2.5)
+    .rg(4)                      <span class="c">// radi ← baixos (auto)</span>
+    .react('sp', mid, 2)        <span class="c">// velocitat ← mitjans</span>
+    .react('wnd', treble, 1.5)  <span class="c">// deriva ← aguts</span>
+}
+
+function live() {
+  trail(0.05 + amp() * 0.2)     <span class="c">// com més volum, menys rastre</span>
+  bombolla.draw()
+}</code></pre>
+
+<h3>3 · Tempesta <span class="sub">— camp de direcció molt variable</span></h3>
+<pre><code>function init() {
+  vent = flock(80)
+    .col(color(255, 170))            <span class="c">// blanc semitransparent</span>
+    .rad(1.5).spd(3)
+    .per(50).ali(1.5).sep(2)
+    .wnd(0.2)
+    .dir(QUARTER_PI, 0.9)            <span class="c">// diagonal, camp molt trebolat</span>
+    .sg(5)                           <span class="c">// accelera fort amb els aguts</span>
+}
+
+function live() {
+  trail(0.1)
+  vent.draw()
+  soundMeter()                       <span class="c">// barres de so per calibrar</span>
+}</code></pre>
+
+<h2>Referència ràpida</h2>
+<table>
+  <tr><td><code>flock(n)</code></td><td>crea un floc de n ocells (def. 20)</td></tr>
+  <tr><td><code>.col(c) .rad(r) .spd(s)</code></td><td>color · radi · velocitat</td></tr>
+  <tr><td><code>.per .coh .ali .sep .wnd .nsc</code></td><td>regles del floc i soroll</td></tr>
+  <tr><td><code>.dir(a, v) .dirOff()</code></td><td>direcció principal i variabilitat</td></tr>
+  <tr><td><code>.linia(true)</code></td><td>línia contínua en lloc de cercles</td></tr>
+  <tr><td><code>.rg .sg .calm() .react(p, f, a)</code></td><td>reactivitat al so</td></tr>
+  <tr><td><code>.add(n) .remove(n)</code></td><td>ocells en calent</td></tr>
+  <tr><td><code>trail(a) fade() soundMeter()</code></td><td>pantalla i so</td></tr>
+  <tr><td><code>bass() mid() treble() amp()</code></td><td>senyals d'àudio (0..1)</td></tr>
+</table>
+
+</main>
+</body>
+</html>
