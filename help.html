@@ -107,24 +107,25 @@ llarga (<code>trail(0.02)</code>) genera traços que es fonen suaument.</p>
   <tr><td><code>treble()</code></td><td>aguts (2,6–14 kHz)</td></tr>
   <tr><td><code>amp()</code></td><td>volum general</td></tr>
 </table>
-<p>Per defecte cada floc ja reacciona sol: el <b>radi</b> batega amb els baixos i la
-<b>velocitat</b> amb els aguts. Es regula amb:</p>
-<table>
-  <tr><td><code>.rg(3)</code></td><td>sensibilitat del radi als baixos</td></tr>
-  <tr><td><code>.sg(4)</code></td><td>sensibilitat de la velocitat als aguts</td></tr>
-  <tr><td><code>.calm()</code></td><td>desactiva la reacció automàtica</td></tr>
-</table>
-<p>Per lligar <b>qualsevol</b> paràmetre a <b>qualsevol</b> banda, fes servir
-<code>react(prop, fn, amt)</code>, on <code>prop</code> pot ser <code>'r'</code> (radi),
-<code>'sp'</code> (velocitat) o <code>'wnd'</code> (deriva), i <code>fn</code> qualsevol
-funció que retorni un nombre:</p>
-<pre><code>f.<span class="k">react</span>('r',   mid,    10)   <span class="c">// el radi creix amb els mitjans</span>
-f.<span class="k">react</span>('sp',  bass,   2)    <span class="c">// la velocitat, amb els baixos</span>
-f.<span class="k">react</span>('wnd', treble, 1.5)  <span class="c">// la deriva, amb els aguts</span>
-f.<span class="k">react</span>('r',   () =&gt; mouseX / width, 20) <span class="c">// o el que vulguis</span></code></pre>
-<p><code>amt</code> és quant s'hi suma quan el senyal val 1. Pots apilar diverses crides
-<code>react()</code> sobre el mateix floc. Amb <code>soundMeter()</code> veus les barres
-de so per calibrar a ull.</p>
+<p>Per lligar <b>qualsevol</b> paràmetre a <b>qualsevol</b> banda hi ha una sola
+eina: <code>react(prop, banda, factor)</code>, on <code>prop</code> pot ser
+<code>'r'</code> (radi), <code>'sp'</code> (velocitat) o <code>'wnd'</code> (deriva),
+i la banda pot ser qualsevol funció que retorni un nombre:</p>
+<pre><code>f.<span class="k">react</span>('r',   bass,   2)    <span class="c">// radi: ×1 en silenci → ×2 amb bass = 1</span>
+f.<span class="k">react</span>('sp',  mid,    1.5)  <span class="c">// velocitat: fins a ×1,5 amb els mitjans</span>
+f.<span class="k">react</span>('wnd', treble, 3)    <span class="c">// deriva: fins a ×3 amb els aguts</span>
+f.<span class="k">react</span>('r',   () =&gt; mouseX / width, 2) <span class="c">// o el que vulguis</span></code></pre>
+<p>El <b>factor és el multiplicador màxim</b>: el paràmetre interpola entre ×1
+(senyal = 0, sense canvi) i ×factor (senyal = 1). Amb un factor menor que 1 el
+paràmetre s'encongeix: <code>react('r', bass, 0.5)</code> el redueix fins a la
+meitat. Com que és proporcional, l'efecte escala amb la mida del floc. Pots apilar
+diverses crides <code>react()</code> sobre el mateix floc.</p>
+<p><b>Compte amb <code>wnd</code>:</b> si la deriva base val 0, multiplicar no fa res
+(0 × el que sigui = 0). Posa-li primer una base: <code>flock(30).wnd(0.3).react('wnd', treble, 3)</code>.</p>
+<p><b>Per defecte un floc nou no reacciona al so en absolut</b>: la reactivitat és
+sempre elecció teva via <code>react()</code>. Si vols treure les reaccions d'un floc,
+<code>calm()</code> les buida totes. Amb <code>soundMeter()</code> veus les barres de
+so per calibrar a ull.</p>
 
 <h2>Pantalla i estela</h2>
 <table>
@@ -143,7 +144,6 @@ de so per calibrar a ull.</p>
     .per(60).ali(2).coh(0.5)
     .dir(0, 0.15)    <span class="c">// corrent cap a la dreta, quasi lineal</span>
     .linia(true)     <span class="c">// traç continu en lloc de cercles</span>
-    .calm()          <span class="c">// sense reacció al so</span>
 }
 
 function live() {
@@ -157,9 +157,9 @@ function live() {
     .col('#ff5c8a')
     .rad(5).spd(1.5)
     .per(120).coh(2).sep(2.5)
-    .rg(4)                      <span class="c">// radi ← baixos (auto)</span>
-    .react('sp', mid, 2)        <span class="c">// velocitat ← mitjans</span>
-    .react('wnd', treble, 1.5)  <span class="c">// deriva ← aguts</span>
+    .react('r', bass, 5)        <span class="c">// radi fins a ×5 amb els baixos</span>
+    .react('sp', mid, 2)        <span class="c">// velocitat fins a ×2 amb els mitjans</span>
+    .react('wnd', treble, 3)    <span class="c">// deriva fins a ×3 amb els aguts</span>
 }
 
 function live() {
@@ -175,7 +175,7 @@ function live() {
     .per(50).ali(1.5).sep(2)
     .wnd(0.2)
     .dir(QUARTER_PI, 0.9)            <span class="c">// diagonal, camp molt trebolat</span>
-    .sg(5)                           <span class="c">// accelera fort amb els aguts</span>
+    .react('sp', treble, 6)          <span class="c">// velocitat fins a ×6 amb els aguts</span>
 }
 
 function live() {
@@ -191,7 +191,7 @@ function live() {
   <tr><td><code>.per .coh .ali .sep .wnd .nsc</code></td><td>regles del floc i soroll</td></tr>
   <tr><td><code>.dir(a, v) .dirOff()</code></td><td>direcció principal i variabilitat</td></tr>
   <tr><td><code>.linia(true)</code></td><td>línia contínua en lloc de cercles</td></tr>
-  <tr><td><code>.rg .sg .calm() .react(p, f, a)</code></td><td>reactivitat al so</td></tr>
+  <tr><td><code>.react(p, banda, f) .calm()</code></td><td>reactivitat al so: fins a ×f (×1 en silenci)</td></tr>
   <tr><td><code>.add(n) .remove(n)</code></td><td>ocells en calent</td></tr>
   <tr><td><code>trail(a) fade() soundMeter()</code></td><td>pantalla i so</td></tr>
   <tr><td><code>bass() mid() treble() amp()</code></td><td>senyals d'àudio (0..1)</td></tr>

@@ -12,21 +12,21 @@ function setup() {
     .col('#ff5c8a')
     .rad(4).spd(1.5)
     .per(140).coh(1.8).sep(2).wnd(0.15)
-    .rg(3);
+    .react('r', bass, 4);
 
   // petits i ràpids: alineats en bandada, acceleren amb els aguts
   petits = flock(60)
     .col('#5cd6ff')
     .rad(2.5).spd(2.5)
     .per(50).ali(2).coh(0.7)
-    .sg(4);
+    .react('sp', treble, 5);
 
   // boira de fons: subtil però també floqueix
   boiros = flock(30)
     .col(color(200, 35))
     .rad(5).spd(0.8)
     .per(90).coh(0.8).ali(0.8).wnd(0.4)
-    .rg(2);
+    .react('r', bass, 2.5);
 }
 
 function draw() {

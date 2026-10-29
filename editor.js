@@ -16,21 +16,21 @@ function init() {
     .col('#ff5c8a')
     .rad(4).spd(1.5)
     .per(140).coh(1.8).sep(2).wnd(0.15)
-    .rg(3)
+    .react('r', bass, 4) // radi fins a ×4 amb els baixos
 
   // petits i rapids: bandada alineada, acceleren amb els aguts
   petits = flock(60)
     .col('#5cd6ff')
     .rad(2.5).spd(2.5)
     .per(50).ali(2).coh(0.7)
-    .sg(4)
+    .react('sp', treble, 5) // velocitat fins a ×5 amb els aguts
 
   // boira de fons
   boiros = flock(30)
     .col(color(200, 35))
     .rad(5).spd(0.8)
     .per(90).coh(0.8).ali(0.8).wnd(0.4)
-    .rg(2)
+    .react('r', bass, 2.5) // radi fins a ×2,5 amb els baixos
 }
 
 function live() {
@@ -76,12 +76,12 @@ botó 'guia'     help.html: guia completa amb exemples
 
 ▸ SO  (valors 0..1, auto-normalitzats)
   bass() mid() treble() amp()
-  .rg(3)              radi ← baixos   (auto ON)
-  .sg(4)              velocitat ← aguts
-  .calm()             desactiva reacció auto
-  .react('wnd', mid, 0.5)  reacció extra
-                      ('r', 'sp' o 'wnd'; qualsevol fn)
-  soundMeter()        barres de so en pantalla
+  .react('r', bass, 3)   ×1 en silenci → ×3 amb bass=1
+                         (factor = multiplicador màxim)
+                         ('r', 'sp' o 'wnd'; qualsevol fn)
+  .calm()                treu totes les reaccions
+  (flock() nou: cap reacció per defecte)
+  soundMeter()           barres de so en pantalla
 
 ▸ DINÀMIC
   .add(10)  .remove(10)
@@ -92,7 +92,7 @@ botó 'guia'     help.html: guia completa amb exemples
 
 ▸ EXEMPLE
   function init() {
-    f = flock(40).col('cyan').coh(2).rg(5)
+    f = flock(40).col('cyan').coh(2).react('r', bass, 4)
   }
   function live() {
     trail(0.05 + bass() * 0.4)
@@ -217,7 +217,7 @@ function draw() {
   if (_err) {
     fill(255, 90, 90); noStroke();
     textAlign(LEFT, BOTTOM); textSize(13); textFont('monospace');
-    text('error: ' + _err, 12, height - 12);
+    text('error: ' + _err, 12, height - 46); // per sobre dels botons de baix
   }
   if (!_au) {
     fill(255); noStroke();

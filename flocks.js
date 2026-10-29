@@ -2,18 +2,18 @@
    flocks.js — llibreria de live coding de flocs per a p5live
    Requereix: p5.js + p5.sound
    Ús ràpid:
-     f = flock()                 // floc per defecte: ja es veu,
+     f = flock()                 // floc per defecte: ja es veu i
                                  // es comporta com un floc (cohesió,
-                                 // alineació, separació) i ja
-                                 // reacciona a la música (radi←baixos,
-                                 // velocitat←aguts)
+                                 // alineació, separació); NO reacciona
+                                 // al so si no ho demanes amb react()
      f.col('red').rad(8).spd(3)  // tot encadenable
      f.coh(2).sep(3).per(100)    // regles del floc
-     f.rg(4).sg(0.5)             // sensibilitat radi / velocitat
+     f.react('r', bass, 2)       // radi: ×1 en silenci → ×2 amb bass màxim
+     f.react('sp', treble, 3)    // react(prop, banda, multiplicador màxim):
+                                 //   prop: 'r' | 'sp' | 'wnd'
      f.dir(0, 0.2)               // direcció principal (angle, variabilitat)
      f.linia(true)               // línia contínua en lloc de cercles
-     f.calm()                    // desactiva la reacció automàtica
-     f.react('r', mid, 20)       // reacció extra: 'r' | 'sp' | 'wnd'
+     f.calm()                    // treu TOTES les reaccions al so
      f.draw()                    // dins de draw()
    Àudio: bass() mid() treble() amp()  (normalitzats 0..1)
    L'àudio s'activa solet al primer clic/tap/tecla (política dels
@@ -212,12 +212,9 @@ class Flock {
     this._dvr = o.dvr ?? 0.5;      // variabilitat del camp (0 = gairebé recta)
     this._wD  = o.wDir ?? 0;       // pes de la direcció (0 = desactivada)
     this._linia = o.linia ?? false; // línia contínua en lloc de cercles
-    this._rx  = [];                // reactivitat extra: {prop, fn, amt}
-    // reactivitat automàtica a la música (activada per defecte):
-    // el radi respira amb els baixos i la velocitat amb els aguts
-    this._auto = o.auto ?? true;
-    this._rg   = o.rg   ?? 3;      // guany radi  (r  *= 1 + bass()*rg)
-    this._sg   = o.sg   ?? 3;      // guany veloc (sp *= 1 + treble()*sg)
+    this._rx  = [];                // reactivitat al so: {prop, fn, amt}
+                                   // buida: CAP reacció per defecte;
+                                   // afegeix-les amb react()
     this.add(n);
   }
 
@@ -250,11 +247,8 @@ class Flock {
   dirOff() { this._wD = 0; return this; }
   // --- dibuix ---
   linia(on = true) { this._linia = on; return this; } // línia contínua
-  // --- reactivitat automàtica (per defecte ON) ---
-  auto(on = true) { this._auto = on; return this; }
-  rg(g) { this._rg = g; return this; }   // sensibilitat del radi als baixos
-  sg(g) { this._sg = g; return this; }   // sensibilitat de la velocitat als aguts
-  calm() { return this.auto(false); }    // desactiva la reacció automàtica
+  // --- reactivitat al so ---
+  calm() { this._rx = []; return this; } // treu TOTES les reaccions al so
   // àlies estil set*
   setColor(c)  { return this.col(c); }
   setRadius(r) { return this.rad(r); }
@@ -263,16 +257,14 @@ class Flock {
 
   // --- reactivitat a l'àudio (o qualsevol funció) ---
   // prop: 'r' | 'sp' | 'wnd'   fn: bass / mid / treble / amp / () => ...
+  // amt = multiplicador màxim: valor_final = base × (1 + fn()·(amt-1))
+  // react('r', mid, 3) → r va de ×1 (silenci) a ×3 (mid = 1)
   react(prop, fn, amt = 1) { this._rx.push({ prop, fn, amt }); return this; }
 
   _vals() {
     const v = { r: this._rad, sp: this._spd, wnd: this._wnd };
-    if (this._auto) { // reacció automàtica a la música
-      v.r  *= 1 + bass()   * this._rg;
-      v.sp *= 1 + treble() * this._sg;
-    }
     for (const { prop, fn, amt } of this._rx) {
-      if (prop in v) v[prop] = Math.max(0, v[prop] + fn() * amt);
+      if (prop in v) v[prop] = Math.max(0, v[prop] * (1 + fn() * (amt - 1)));
     }
     return v;
   }
