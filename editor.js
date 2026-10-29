@@ -1,108 +1,81 @@
-/* editor.js — mini entorn de live coding sobre flocks.js
-   El codi d'usuari es mostra sobre el canvas i és editable:
-     Ctrl/Cmd+Enter → executa els canvis (sense reiniciar)
-     Ctrl+E         → amaga/mostra l'editor
-   Convencions del codi d'usuari:
-     init() → s'executa un cop a cada "run" (crea/modifica flocs)
-     live() → s'executa a cada frame dins del draw()
-   NO facis servir let/const al nivell superior: variables globals
-   planes (gegant = flock(...)) perquè el re-run no peti. */
+/* editor.js — tiny live coding environment on top of flocks.js
+   The user code is shown over the canvas and is editable:
+     Ctrl/Cmd+Enter → run the changes (no restart)
+     Ctrl/Cmd+E     → hide/show the editor
+   User code conventions:
+     init() → runs once on every "run" (create/modify flocks)
+     live() → runs every frame inside draw()
+   Do NOT use let/const at the top level: use plain globals
+   (f = flock(...)) so re-running doesn't throw. */
 
-const DEMO_CODE = `// edita i prem Ctrl/Cmd+Enter per executar
+const DEMO_CODE = `// 1. press Ctrl/Cmd+Enter to run
+// 2. remove the // in front of a line, run again, see what changes
 
 function init() {
-  // gegant: cohesionat, batega amb els baixos
-  gegant = flock(25)
-    .col('#ff5c8a')
-    .rad(4).spd(1.5)
-    .per(140).coh(1.8).sep(2).wnd(0.15)
-    .react('r', bass, 4) // radi fins a ×4 amb els baixos
-
-  // petits i rapids: bandada alineada, acceleren amb els aguts
-  petits = flock(60)
-    .col('#5cd6ff')
-    .rad(2.5).spd(2.5)
-    .per(50).ali(2).coh(0.7)
-    .react('sp', treble, 5) // velocitat fins a ×5 amb els aguts
-
-  // boira de fons
-  boiros = flock(30)
-    .col(color(200, 35))
-    .rad(5).spd(0.8)
-    .per(90).coh(0.8).ali(0.8).wnd(0.4)
-    .react('r', bass, 2.5) // radi fins a ×2,5 amb els baixos
+  f = flock(30)             // 30 birds wandering around
+  // .col('#5cd6ff')        // color
+  // .rad(3)                // smaller birds
+  // .flocking()            // birds stick together
+  // .dir(0, 0.2)           // everybody goes right
+  // .line()                // draw strokes instead of circles
+  // .r('rad', bass, 4)     // size grows up to x4 with the bass
 }
 
 function live() {
-  // rastre: trail(0) = infinit ... trail(1) = sense rastre
-  trail(0.05 + bass() * 0.4) // el bombo "esborra" la pantalla
-
-  boiros.draw()
-  gegant.draw()
-  petits.draw()
+  trail(0.1)                // 0 = endless trail ... 1 = no trail
+  f.draw()
 }
 `;
 
-const HELP_TEXT = `FLOCKS.JS — REFERÈNCIA
-────────────────────────────────
-Ctrl/Cmd+Enter  executa el codi
-h / botons      mostra/amaga ajuda i codi
-botó 'guia'     help.html: guia completa amb exemples
+const HELP_TEXT = `FLOCKS.JS — QUICK REFERENCE
+─────────────────────────────
+Ctrl/Cmd+Enter   run the code
+Ctrl/Cmd+E       hide/show the code
+h                hide/show this help
+'guide' button   full guide with examples
 
-▸ CREAR
-  flock(n)            floc de n ocells (def. 20)
+▸ YOUR CODE HAS TWO PARTS
+  init()   runs once each time you run
+           → create flocks here
+  live()   runs every frame
+           → draw flocks here
 
-▸ ESTIL (encadenable)
-  .col('#ff5c8a')     color
-  .rad(4)             radi dels cercles
-  .spd(2.5)           velocitat màxima
+▸ START
+  f = flock()          20 birds, just wandering
+  f = flock(50)        50 birds
+  f.draw()             inside live()
 
-▸ REGLES DEL FLOC
-  .per(140)           radi de percepció
-  .coh(1.8)           cohesió (atracció al grup)
-  .ali(2)             alineació (seguir veïns)
-  .sep(2)             separació (no xocar)
-  .wnd(0.3)           deriva de soroll (0 = pur)
+▸ LOOK  (chain them: f.col(..).rad(..))
+  .col('red')          color
+  .rad(4)              radius
+  .spd(3)              speed
+  .line()              strokes instead of circles
 
-▸ DIRECCIÓ (camp de soroll)
-  .dir(0, 0.2)        direcció principal:
-                      angle en radians, variabilitat
-                      (0 = gairebé recta, 1 = molt)
-  .dirOff()           desactiva la direcció
+▸ BEHAVIOUR  (off by default)
+  .flocking()          classic flock: all 3 rules
+  .coh(2)              cohesion: stay together
+  .ali(2)              alignment: fly the same way
+  .sep(2)              separation: don't collide
+  .per(100)            how far each bird sees
+  .wnd(0.3)            random wandering (0 = none)
+  .dir(0, 0.2)         main heading: angle,
+                       variability (0 straight, 1 wild)
+  .dirOff()            no main heading
 
-▸ DIBUIX
-  .linia(true)        línia contínua (gruix = diàmetre)
-                      en lloc de cercles
-
-▸ SO  (valors 0..1, auto-normalitzats)
+▸ SOUND  (signals 0..1)
   bass() mid() treble() amp()
-  .react('r', bass, 3)   ×1 en silenci → ×3 amb bass=1
-                         (factor = multiplicador màxim)
-                         ('r', 'sp' o 'wnd'; qualsevol fn)
-  .calm()                treu totes les reaccions
-  (flock() nou: cap reacció per defecte)
-  soundMeter()           barres de so en pantalla
+  .r('rad', bass, 3)   radius x1 in silence → x3 loud
+  .r('spd', mid, 2)    speed up to x2
+  .r('wnd', treble, 3) wandering up to x3
+  .calm()              remove all reactions
 
-▸ DINÀMIC
-  .add(10)  .remove(10)
+▸ MORE
+  .add(10) .remove(10) birds on the fly
+  trail(0.05)          0 = endless trail, 1 = none
+  soundMeter()         sound bars on screen
 
-▸ PANTALLA
-  trail(0.05)         rastre (0 = infinit, 1 = cap)
-  fade()              fons amb estela (ja al draw)
-
-▸ EXEMPLE
-  function init() {
-    f = flock(40).col('cyan').coh(2).react('r', bass, 4)
-  }
-  function live() {
-    trail(0.05 + bass() * 0.4)
-    f.draw()
-  }
-
-▸ TECLES (fora de l'editor)
-  a  +10 ocells a 'petits'
-  s  -10 ocells
-  c  color aleatori
+▸ KEYS (outside the editor, on the last flock)
+  a  +10 birds    s  -10 birds    c  random color
 `;
 
 let _err = null;
@@ -111,7 +84,7 @@ let _help = null;
 
 function runCode(code) {
   try {
-    (0, eval)(code); // eval indirecte → àmbit global
+    (0, eval)(code); // indirect eval → global scope
     _err = null;
     if (typeof init === 'function') init();
   } catch (e) {
@@ -129,16 +102,16 @@ function setup() {
   _ta.spellcheck = false;
   Object.assign(_ta.style, {
     position: 'fixed', top: '12px', left: '12px', zIndex: 10,
-    width: 'min(520px, 45vw)', height: '70vh',
+    width: 'min(620px, 70vw)', height: '70vh',
     background: 'rgba(0,0,0,0.55)', color: '#eee',
-    font: '13px/1.45 monospace', border: '1px solid rgba(255,255,255,0.25)',
-    borderRadius: '6px', padding: '10px', outline: 'none',
+    font: '18px/1.45 monospace', border: '1px solid rgba(255,255,255,0.25)',
+    borderRadius: '6px', padding: '12px', outline: 'none',
     resize: 'both', whiteSpace: 'pre', tabSize: 2,
   });
   document.body.appendChild(_ta);
 
   _ta.addEventListener('keydown', (e) => {
-    e.stopPropagation(); // p5 no ha de rebre les tecles mentre edites
+    e.stopPropagation(); // p5 must not get keys while editing
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
       e.preventDefault();
       runCode(_ta.value);
@@ -149,45 +122,51 @@ function setup() {
     }
   });
 
-  // capçalera informativa
+  // hint under the editor
   const hint = document.createElement('div');
-  hint.textContent = 'Ctrl/Cmd+Enter: executa · Ctrl+E: amaga';
+  hint.textContent = 'Ctrl/Cmd+Enter: run · Ctrl/Cmd+E: hide · h: help';
   Object.assign(hint.style, {
-    position: 'fixed', left: '14px', top: 'calc(70vh + 16px)', zIndex: 10,
-    color: 'rgba(255,255,255,0.6)', font: '11px monospace',
+    position: 'fixed', left: '14px', top: 'calc(70vh + 20px)', zIndex: 10,
+    color: 'rgba(255,255,255,0.6)', font: '14px monospace',
     pointerEvents: 'none',
   });
   hint.id = 'editorHint';
   document.body.appendChild(hint);
 
-  // --- panell d'ajuda (referència ràpida) ---
+  // --- help panel (quick reference) ---
   _help = document.createElement('pre');
   _help.textContent = HELP_TEXT;
   Object.assign(_help.style, {
-    position: 'fixed', right: '12px', top: '12px', zIndex: 10,
-    maxWidth: 'min(400px, 42vw)', maxHeight: '86vh', overflow: 'auto',
-    margin: 0, background: 'rgba(0,0,0,0.55)', color: '#eee',
-    font: '11px/1.5 monospace', border: '1px solid rgba(255,255,255,0.25)',
-    borderRadius: '6px', padding: '10px', display: 'none',
+    position: 'fixed', right: '12px', top: '100px', zIndex: 10,
+    maxWidth: 'min(460px, 42vw)', maxHeight: 'calc(100vh - 160px)', overflow: 'auto',
+    margin: 0, background: 'rgba(0,0,0,0.7)', color: '#eee',
+    font: '14px/1.5 monospace', border: '1px solid rgba(255,255,255,0.25)',
+    borderRadius: '6px', padding: '12px', display: 'none',
   });
   document.body.appendChild(_help);
 
-  // botons fixos per amagar/mostrar codi i ajuda (sempre visibles)
-  const mkBtn = (txt, left, fn) => {
+  // fixed buttons to hide/show code and help (always visible)
+  const bar = document.createElement('div');
+  Object.assign(bar.style, {
+    position: 'fixed', left: '12px', bottom: '12px', zIndex: 11,
+    display: 'flex', gap: '8px',
+  });
+  document.body.appendChild(bar);
+  const mkBtn = (txt, fn) => {
     const b = document.createElement('button');
     b.textContent = txt;
     Object.assign(b.style, {
-      position: 'fixed', left, bottom: '12px', zIndex: 11,
       background: 'rgba(0,0,0,0.55)', color: 'rgba(255,255,255,0.75)',
-      font: '11px monospace', border: '1px solid rgba(255,255,255,0.25)',
-      borderRadius: '4px', padding: '4px 10px', cursor: 'pointer',
+      font: '14px monospace', border: '1px solid rgba(255,255,255,0.25)',
+      borderRadius: '4px', padding: '5px 12px', cursor: 'pointer',
     });
     b.onclick = fn;
-    document.body.appendChild(b);
+    bar.appendChild(b);
   };
-  mkBtn('codi', '12px', toggleEditor);
-  mkBtn('ajuda', '66px', toggleHelp);
-  mkBtn('guia', '120px', () => window.open('help.html', '_blank'));
+  mkBtn('▶ run', () => runCode(_ta.value));
+  mkBtn('code', toggleEditor);
+  mkBtn('help', toggleHelp);
+  mkBtn('guide', () => window.open('help.html', '_blank'));
 
   function toggleEditor() {
     const hidden = _ta.style.display === 'none';
@@ -205,35 +184,35 @@ function toggleHelp() {
 }
 
 function draw() {
-  fade(); // fons amb estela (trail(a) per canviar-la)
+  fade(); // background with trail (change it with trail(a))
 
   if (typeof live === 'function') {
     try { live(); }
     catch (e) { _err = e.message; }
   }
 
-  soundMeter(width - 130, 12, 110, 60); // barres de so a dalt a la dreta
+  soundMeter(width - 130, 12, 110, 60); // sound bars, top right
 
   if (_err) {
     fill(255, 90, 90); noStroke();
-    textAlign(LEFT, BOTTOM); textSize(13); textFont('monospace');
-    text('error: ' + _err, 12, height - 46); // per sobre dels botons de baix
+    textAlign(LEFT, BOTTOM); textSize(16); textFont('monospace');
+    text('error: ' + _err, 12, height - 52); // above the bottom buttons
   }
   if (!_au) {
     fill(255); noStroke();
-    textAlign(CENTER, CENTER); textSize(16);
-    text('clic per activar el so', width / 2, height / 2);
+    textAlign(CENTER, CENTER); textSize(18);
+    text('click to turn on the sound', width / 2, height / 2);
   }
 }
 
 function keyPressed() {
-  if (document.activeElement === _ta) return; // editant: no tocar res
+  if (document.activeElement === _ta) return; // editing: leave it alone
   if (key === 'h' || key === 'H') toggleHelp();
-  // modificació "on-the-fly" del floc 'petits' si existeix
-  if (typeof petits !== 'undefined') {
-    if (key === 'a') petits.add(10);
-    if (key === 's') petits.remove(10);
-    if (key === 'c') petits.col(color(random(255), random(255), random(255)));
+  // on-the-fly changes to the most recently created flock
+  if (_lastFlock) {
+    if (key === 'a') _lastFlock.add(10);
+    if (key === 's') _lastFlock.remove(10);
+    if (key === 'c') _lastFlock.col(color(random(255), random(255), random(255)));
   }
 }
 

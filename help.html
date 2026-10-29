@@ -1,200 +1,232 @@
 <!DOCTYPE html>
-<html lang="ca">
+<html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>flocks.js — Guia</title>
+<title>flocks.js — Guide</title>
 <style>
   body {
     margin: 0; padding: 40px 20px 80px;
     background: #0d0d10; color: #e8e8e8;
-    font: 15px/1.6 system-ui, sans-serif;
+    font: 16px/1.6 system-ui, sans-serif;
   }
-  main { max-width: 720px; margin: 0 auto; }
-  h1 { font-size: 26px; margin-bottom: 4px; }
+  main { max-width: 760px; margin: 0 auto; }
+  h1 { font-size: 28px; margin-bottom: 4px; }
   h2 {
-    font-size: 18px; margin-top: 48px; padding-bottom: 6px;
+    font-size: 20px; margin-top: 48px; padding-bottom: 6px;
     border-bottom: 1px solid #333; color: #5cd6ff;
   }
-  h3 { font-size: 15px; margin-top: 28px; color: #ffd25c; }
+  h3 { font-size: 17px; margin-top: 28px; color: #ffd25c; }
   p, li { color: #c9c9c9; }
   code {
     background: #1c1c22; border-radius: 4px; padding: 1px 6px;
-    font: 13px/1.5 "SF Mono", Menlo, Consolas, monospace; color: #ffd25c;
+    font: 16px/1.5 "SF Mono", Menlo, Consolas, monospace; color: #ffd25c;
   }
   pre {
     background: #141419; border: 1px solid #2a2a33; border-radius: 8px;
-    padding: 14px 16px; overflow-x: auto;
+    padding: 16px 18px; overflow-x: auto;
   }
-  pre code { background: none; padding: 0; color: #d8d8d8; }
-  pre code .c { color: #6a737d; }        /* comentaris */
-  pre code .k { color: #5cd6ff; }        /* mètodes del floc */
+  pre code { background: none; padding: 0; color: #d8d8d8; font-size: 17px; }
+  pre code .c { color: #6a737d; }        /* comments */
+  pre code .k { color: #5cd6ff; }        /* flock methods */
   table { border-collapse: collapse; width: 100%; margin: 12px 0; }
-  td { padding: 5px 10px; border-bottom: 1px solid #26262e; vertical-align: top; }
+  td { padding: 6px 10px; border-bottom: 1px solid #26262e; vertical-align: top; }
   td:first-child { white-space: nowrap; }
-  .sub { color: #888; font-size: 14px; }
+  .sub { color: #888; font-size: 15px; }
   .tag {
     display: inline-block; background: #1c1c22; border: 1px solid #2a2a33;
     border-radius: 4px; padding: 0 8px; margin-right: 6px;
-    font: 12px monospace; color: #aaa;
+    font: 14px monospace; color: #aaa;
   }
+  ol li { margin-bottom: 6px; }
 </style>
 </head>
 <body>
 <main>
 
 <h1>flocks.js</h1>
-<p class="sub">Llibreria de live coding de flocs (boids) per sobre de <b>p5.js</b> + <b>p5.sound</b>.
-Pensada per escriure poc i veure resultats immediats.</p>
+<p class="sub">A live coding library for flocks (boids) built on <b>p5.js</b> + <b>p5.sound</b>.
+Write a little, see results right away.</p>
 
-<h2>Com funciona l'entorn</h2>
-<p>L'aplicació (<code>index.html</code>) carrega p5.js, p5.sound, la llibreria
-(<code>flocks.js</code>) i un mini-editor (<code>editor.js</code>). El codi que escrius
-a l'editor es divideix en dues funcions:</p>
-<table>
-  <tr><td><code>init()</code></td><td>s'executa <b>un cop</b> cada vegada que executes (Ctrl/Cmd+Enter). Aquí es creen o es modifiquen els flocs.</td></tr>
-  <tr><td><code>live()</code></td><td>s'executa <b>a cada frame</b>. Aquí es dibuixa i es modula.</td></tr>
-</table>
-<p><span class="tag">Ctrl/Cmd+Enter</span> executa els canvis sense reiniciar
-<span class="tag">Ctrl+E</span> amaga/mostra l'editor
-<span class="tag">h</span> referència ràpida en pantalla</p>
-<p><b>Important:</b> no facis servir <code>let</code>/<code>const</code> al nivell superior;
-declara variables globals planes (<code>f = flock(...)</code>) perquè el re-run no peti.</p>
-
-<h2>Crear un floc</h2>
-<pre><code>f = flock()        <span class="c">// 20 ocells, ja es veu i ja reacciona a la música</span>
-f = flock(50)      <span class="c">// amb 50 ocells</span>
-f.add(10)          <span class="c">// afegeix 10 ocells en calent</span>
-f.remove(10)       <span class="c">// en treu 10</span></code></pre>
-<p>Tots els mètodes són <b>encadenables</b>:</p>
-<pre><code>f = flock(40)
-  .<span class="k">col</span>('#ff5c8a')   <span class="c">// color (nom, hex o color() de p5)</span>
-  .<span class="k">rad</span>(4)          <span class="c">// radi dels cercles</span>
-  .<span class="k">spd</span>(2.5)        <span class="c">// velocitat base (i màxima)</span></code></pre>
-
-<h2>Comportament del floc</h2>
-<p>Cada ocell combina les tres regles clàssiques dels boids més una deriva de
-soroll Perlin que els dona organicitat:</p>
-<table>
-  <tr><td><code>.per(140)</code></td><td>radi de percepció: fins on veu els veïns</td></tr>
-  <tr><td><code>.coh(1.8)</code></td><td>cohesió: atracció cap al centre del grup</td></tr>
-  <tr><td><code>.ali(2)</code></td><td>alineació: seguir la direcció dels veïns</td></tr>
-  <tr><td><code>.sep(2)</code></td><td>separació: no xocar</td></tr>
-  <tr><td><code>.wnd(0.3)</code></td><td>deriva de soroll (0 = boids purs)</td></tr>
-  <tr><td><code>.nsc(0.005)</code></td><td>escala espacial del soroll (petit = camps suaus i grans)</td></tr>
-</table>
-<p>Els ocells fan <b>wrap-around</b>: quan surten per una vora, tornen per l'oposada.</p>
-
-<h2>Direcció principal (camp de soroll)</h2>
-<p>Pots donar al floc una direcció dominant que segueix un camp de soroll:</p>
-<pre><code>f.<span class="k">dir</span>(0, 0.2)        <span class="c">// cap a la dreta, gairebé en línia recta</span>
-f.<span class="k">dir</span>(QUARTER_PI, 1) <span class="c">// diagonal, camp molt variable</span>
-f.<span class="k">dirOff</span>()          <span class="c">// la desactiva</span></code></pre>
-<p>El primer paràmetre és l'<b>angle en radians</b>; el segon és la <b>variabilitat</b>:
-amb <code>0</code> els ocells van gairebé rectes; amb <code>1</code> el camp els desvia molt.
-Un tercer paràmetre opcional regula la força de l'ajust (1 per defecte).</p>
-
-<h2>Dibuix: cercles o línia contínua</h2>
-<pre><code>f.<span class="k">linia</span>(true)   <span class="c">// en lloc de cercles, traç continu</span></code></pre>
-<p>Amb <code>linia(true)</code> cada ocell dibuixa una línia entre la seva posició anterior
-i l'actual, amb un gruix igual al diàmetre del cercle. Combinat amb una estela
-llarga (<code>trail(0.02)</code>) genera traços que es fonen suaument.</p>
-
-<h2>Reactivitat al so</h2>
-<p>La llibreria escolta el micro i normalitza 4 senyals (0..1, amb porta de soroll):</p>
-<table>
-  <tr><td><code>bass()</code></td><td>baixos (20–800 Hz)</td></tr>
-  <tr><td><code>mid()</code></td><td>mitjans (800–2600 Hz)</td></tr>
-  <tr><td><code>treble()</code></td><td>aguts (2,6–14 kHz)</td></tr>
-  <tr><td><code>amp()</code></td><td>volum general</td></tr>
-</table>
-<p>Per lligar <b>qualsevol</b> paràmetre a <b>qualsevol</b> banda hi ha una sola
-eina: <code>react(prop, banda, factor)</code>, on <code>prop</code> pot ser
-<code>'r'</code> (radi), <code>'sp'</code> (velocitat) o <code>'wnd'</code> (deriva),
-i la banda pot ser qualsevol funció que retorni un nombre:</p>
-<pre><code>f.<span class="k">react</span>('r',   bass,   2)    <span class="c">// radi: ×1 en silenci → ×2 amb bass = 1</span>
-f.<span class="k">react</span>('sp',  mid,    1.5)  <span class="c">// velocitat: fins a ×1,5 amb els mitjans</span>
-f.<span class="k">react</span>('wnd', treble, 3)    <span class="c">// deriva: fins a ×3 amb els aguts</span>
-f.<span class="k">react</span>('r',   () =&gt; mouseX / width, 2) <span class="c">// o el que vulguis</span></code></pre>
-<p>El <b>factor és el multiplicador màxim</b>: el paràmetre interpola entre ×1
-(senyal = 0, sense canvi) i ×factor (senyal = 1). Amb un factor menor que 1 el
-paràmetre s'encongeix: <code>react('r', bass, 0.5)</code> el redueix fins a la
-meitat. Com que és proporcional, l'efecte escala amb la mida del floc. Pots apilar
-diverses crides <code>react()</code> sobre el mateix floc.</p>
-<p><b>Compte amb <code>wnd</code>:</b> si la deriva base val 0, multiplicar no fa res
-(0 × el que sigui = 0). Posa-li primer una base: <code>flock(30).wnd(0.3).react('wnd', treble, 3)</code>.</p>
-<p><b>Per defecte un floc nou no reacciona al so en absolut</b>: la reactivitat és
-sempre elecció teva via <code>react()</code>. Si vols treure les reaccions d'un floc,
-<code>calm()</code> les buida totes. Amb <code>soundMeter()</code> veus les barres de
-so per calibrar a ull.</p>
-
-<h2>Pantalla i estela</h2>
-<table>
-  <tr><td><code>trail(0.05)</code></td><td>rastre: 0 = infinit, 1 = sense rastre (crida'l dins de <code>live()</code>)</td></tr>
-  <tr><td><code>fade()</code></td><td>pinta el fons amb l'estela actual (ja ho fa el draw de l'editor)</td></tr>
-</table>
-
-<h2>Exemples</h2>
-<p>Enganxa qualsevol d'aquests blocs sencers a l'editor i prem Ctrl/Cmd+Enter.</p>
-
-<h3>1 · Riu de tinta <span class="sub">— traç continu i direcció gairebé recta</span></h3>
+<h2>Your first flock</h2>
+<p>This is all you need. Paste it into the editor and press <span class="tag">Ctrl/Cmd+Enter</span>:</p>
 <pre><code>function init() {
-  riu = flock(40)
+  f = flock()      <span class="c">// 20 birds</span>
+}
+
+function live() {
+  f.draw()
+}</code></pre>
+<p>The birds just wander around. That is the default on purpose: <b>simple</b>. No
+flocking rules, no sound. Everything else is something you add.</p>
+<p>Now add things one at a time, running after each change:</p>
+<pre><code>function init() {
+  f = flock(30)
+    .<span class="k">col</span>('#5cd6ff')     <span class="c">// 1. a color</span>
+    .<span class="k">flocking</span>()        <span class="c">// 2. birds stick together</span>
+    .<span class="k">r</span>('rad', bass, 4) <span class="c">// 3. they grow with the bass (click once to turn on the mic)</span>
+}</code></pre>
+
+<h2>How the environment works</h2>
+<p>Your code has two parts:</p>
+<table>
+  <tr><td><code>init()</code></td><td>runs <b>once</b> every time you run the code. Create or change flocks here.</td></tr>
+  <tr><td><code>live()</code></td><td>runs <b>every frame</b>. Draw here.</td></tr>
+</table>
+<p><span class="tag">Ctrl/Cmd+Enter</span> runs the changes without restarting
+<span class="tag">Ctrl/Cmd+E</span> hides/shows the editor
+<span class="tag">h</span> quick reference on screen</p>
+<p><b>Important:</b> don't use <code>let</code>/<code>const</code> at the top level;
+write plain globals (<code>f = flock(...)</code>) so running again doesn't break.</p>
+
+<h2>Look</h2>
+<p>All methods are <b>chainable</b>:</p>
+<pre><code>f = flock(40)
+  .<span class="k">col</span>('#ff5c8a')   <span class="c">// color (name, hex or p5 color())</span>
+  .<span class="k">rad</span>(4)          <span class="c">// circle radius</span>
+  .<span class="k">spd</span>(2.5)        <span class="c">// base (and max) speed</span>
+  .<span class="k">line</span>()          <span class="c">// strokes instead of circles</span></code></pre>
+<p>With <code>line()</code> every bird draws a stroke from its previous position to the current
+one, as thick as the circle. With a long trail (<code>trail(0.02)</code>) the strokes melt
+together. <code>line(false)</code> goes back to circles.</p>
+
+<h2>Behaviour</h2>
+<p>A new flock only <b>wanders</b> following a Perlin noise field. The three classic boid
+rules are <b>off</b> until you turn them on:</p>
+<table>
+  <tr><td><code>.flocking()</code></td><td>all three rules at once (<code>flocking(2)</code> stronger, <code>flocking(0)</code> off)</td></tr>
+  <tr><td><code>.coh(1.8)</code></td><td>cohesion: stay together</td></tr>
+  <tr><td><code>.ali(2)</code></td><td>alignment: fly the same way as neighbors</td></tr>
+  <tr><td><code>.sep(2)</code></td><td>separation: don't collide</td></tr>
+  <tr><td><code>.per(140)</code></td><td>perception: how far each bird sees its neighbors</td></tr>
+  <tr><td><code>.wnd(0.3)</code></td><td>random wandering (0 = none, pure boids)</td></tr>
+  <tr><td><code>.nsc(0.005)</code></td><td>noise scale (small = big, smooth currents)</td></tr>
+</table>
+<p>Birds <b>wrap around</b>: when they leave through one edge they come back through the opposite one.</p>
+
+<h3>Main heading</h3>
+<pre><code>f.<span class="k">dir</span>(0, 0.2)        <span class="c">// to the right, almost a straight line</span>
+f.<span class="k">dir</span>(QUARTER_PI, 1) <span class="c">// diagonal, very wild field</span>
+f.<span class="k">dirOff</span>()          <span class="c">// turn it off</span></code></pre>
+<p>First parameter: <b>angle in radians</b>. Second: <b>variability</b>, from
+<code>0</code> (almost straight) to <code>1</code> (very wild). An optional third one sets
+how strongly they steer (1 by default).</p>
+
+<h2>Sound</h2>
+<p>The library listens to the mic and gives you 4 signals from 0 to 1:</p>
+<table>
+  <tr><td><code>bass()</code></td><td>low (20–800 Hz)</td></tr>
+  <tr><td><code>mid()</code></td><td>mid (800–2600 Hz)</td></tr>
+  <tr><td><code>treble()</code></td><td>high (2.6–14 kHz)</td></tr>
+  <tr><td><code>amp()</code></td><td>overall volume</td></tr>
+</table>
+<p>The mic turns on with your first click or key press (browsers require it).</p>
+<p>To make a flock react, use <code>r(what, signal, times)</code>:</p>
+<pre><code>f.<span class="k">r</span>('rad', bass,   2)    <span class="c">// radius: x1 in silence → x2 with full bass</span>
+f.<span class="k">r</span>('spd', mid,    1.5)  <span class="c">// speed: up to x1.5 with the mids</span>
+f.<span class="k">r</span>('wnd', treble, 3)    <span class="c">// wandering: up to x3 with the highs</span>
+f.<span class="k">r</span>('rad', () =&gt; mouseX / width, 2) <span class="c">// any function works</span></code></pre>
+<p><code>what</code> is the name of the setter you want to move: <code>'rad'</code>,
+<code>'spd'</code> or <code>'wnd'</code>. <code>times</code> is the <b>maximum
+multiplier</b>: in silence nothing changes, at full signal the value is multiplied by
+<code>times</code>. Below 1 it shrinks instead: <code>r('rad', bass, 0.5)</code>.
+You can stack several <code>r()</code> calls. <code>calm()</code> removes them all.</p>
+<p><b>Careful with <code>wnd</code>:</b> if the base value is 0, multiplying does nothing.
+Give it a base first: <code>flock(30).wnd(0.3).r('wnd', treble, 3)</code>.</p>
+<p><code>soundMeter()</code> shows the sound bars so you can calibrate by eye.</p>
+
+<h2>Screen</h2>
+<table>
+  <tr><td><code>trail(0.05)</code></td><td>trail: 0 = endless, 1 = none (call it inside <code>live()</code>)</td></tr>
+  <tr><td><code>fade()</code></td><td>paints the background with the current trail (the editor already does it)</td></tr>
+  <tr><td><code>.add(10) .remove(10)</code></td><td>add or remove birds on the fly</td></tr>
+</table>
+
+<h2>Examples</h2>
+<p>Paste a whole block into the editor and press Ctrl/Cmd+Enter.</p>
+
+<h3>1 · Ink river <span class="sub">— strokes and an almost straight heading</span></h3>
+<pre><code>function init() {
+  river = flock(40)
     .col('#5cd6ff')
     .rad(3).spd(2)
     .per(60).ali(2).coh(0.5)
-    .dir(0, 0.15)    <span class="c">// corrent cap a la dreta, quasi lineal</span>
-    .linia(true)     <span class="c">// traç continu en lloc de cercles</span>
+    .dir(0, 0.15)    <span class="c">// current to the right, almost straight</span>
+    .line()          <span class="c">// strokes instead of circles</span>
 }
 
 function live() {
-  trail(0.02)        <span class="c">// estela molt llarga: les línies es fonen a poc a poc</span>
-  riu.draw()
+  trail(0.02)        <span class="c">// very long trail: strokes fade slowly</span>
+  river.draw()
 }</code></pre>
 
-<h3>2 · Bombola de so <span class="sub">— tot lligat a la música</span></h3>
+<h3>2 · Sound bubble <span class="sub">— everything tied to the music</span></h3>
 <pre><code>function init() {
-  bombolla = flock(30)
+  bubble = flock(30)
     .col('#ff5c8a')
     .rad(5).spd(1.5)
     .per(120).coh(2).sep(2.5)
-    .react('r', bass, 5)        <span class="c">// radi fins a ×5 amb els baixos</span>
-    .react('sp', mid, 2)        <span class="c">// velocitat fins a ×2 amb els mitjans</span>
-    .react('wnd', treble, 3)    <span class="c">// deriva fins a ×3 amb els aguts</span>
+    .r('rad', bass, 5)        <span class="c">// radius up to x5 with the bass</span>
+    .r('spd', mid, 2)         <span class="c">// speed up to x2 with the mids</span>
+    .r('wnd', treble, 3)      <span class="c">// wandering up to x3 with the highs</span>
 }
 
 function live() {
-  trail(0.05 + amp() * 0.2)     <span class="c">// com més volum, menys rastre</span>
-  bombolla.draw()
+  trail(0.05 + amp() * 0.2)   <span class="c">// louder = shorter trail</span>
+  bubble.draw()
 }</code></pre>
 
-<h3>3 · Tempesta <span class="sub">— camp de direcció molt variable</span></h3>
+<h3>3 · Storm <span class="sub">— a very variable heading field</span></h3>
 <pre><code>function init() {
-  vent = flock(80)
-    .col(color(255, 170))            <span class="c">// blanc semitransparent</span>
+  wind = flock(80)
+    .col(color(255, 170))            <span class="c">// semi-transparent white</span>
     .rad(1.5).spd(3)
     .per(50).ali(1.5).sep(2)
     .wnd(0.2)
-    .dir(QUARTER_PI, 0.9)            <span class="c">// diagonal, camp molt trebolat</span>
-    .react('sp', treble, 6)          <span class="c">// velocitat fins a ×6 amb els aguts</span>
+    .dir(QUARTER_PI, 0.9)            <span class="c">// diagonal, very turbulent</span>
+    .r('spd', treble, 6)             <span class="c">// speed up to x6 with the highs</span>
 }
 
 function live() {
   trail(0.1)
-  vent.draw()
-  soundMeter()                       <span class="c">// barres de so per calibrar</span>
+  wind.draw()
+  soundMeter()                       <span class="c">// sound bars to calibrate</span>
 }</code></pre>
 
-<h2>Referència ràpida</h2>
+<h3>4 · Three flocks <span class="sub">— the full demo</span></h3>
+<pre><code>function init() {
+  giant = flock(25).col('#ff5c8a').rad(4).spd(1.5)
+    .per(140).coh(1.8).sep(2).wnd(0.15)
+    .r('rad', bass, 4)
+
+  smalls = flock(60).col('#5cd6ff').rad(2.5).spd(2.5)
+    .per(50).ali(2).coh(0.7).sep(1.5)
+    .r('spd', treble, 5)
+
+  mist = flock(30).col(color(200, 35)).rad(5).spd(0.8)
+    .per(90).flocking(0.8).wnd(0.4)
+    .r('rad', bass, 2.5)
+}
+
+function live() {
+  trail(0.05 + bass() * 0.4)   <span class="c">// the kick "wipes" the screen</span>
+  mist.draw()
+  giant.draw()
+  smalls.draw()
+}</code></pre>
+
+<h2>Quick reference</h2>
 <table>
-  <tr><td><code>flock(n)</code></td><td>crea un floc de n ocells (def. 20)</td></tr>
-  <tr><td><code>.col(c) .rad(r) .spd(s)</code></td><td>color · radi · velocitat</td></tr>
-  <tr><td><code>.per .coh .ali .sep .wnd .nsc</code></td><td>regles del floc i soroll</td></tr>
-  <tr><td><code>.dir(a, v) .dirOff()</code></td><td>direcció principal i variabilitat</td></tr>
-  <tr><td><code>.linia(true)</code></td><td>línia contínua en lloc de cercles</td></tr>
-  <tr><td><code>.react(p, banda, f) .calm()</code></td><td>reactivitat al so: fins a ×f (×1 en silenci)</td></tr>
-  <tr><td><code>.add(n) .remove(n)</code></td><td>ocells en calent</td></tr>
-  <tr><td><code>trail(a) fade() soundMeter()</code></td><td>pantalla i so</td></tr>
-  <tr><td><code>bass() mid() treble() amp()</code></td><td>senyals d'àudio (0..1)</td></tr>
+  <tr><td><code>flock(n)</code></td><td>new flock of n birds (default 20), just wandering</td></tr>
+  <tr><td><code>.col(c) .rad(r) .spd(s)</code></td><td>color · radius · speed</td></tr>
+  <tr><td><code>.line(on)</code></td><td>strokes instead of circles</td></tr>
+  <tr><td><code>.flocking(w)</code></td><td>turn on cohesion + alignment + separation</td></tr>
+  <tr><td><code>.coh .ali .sep .per</code></td><td>each flocking rule on its own</td></tr>
+  <tr><td><code>.wnd .nsc</code></td><td>random wandering and its noise scale</td></tr>
+  <tr><td><code>.dir(a, v) .dirOff()</code></td><td>main heading and its variability</td></tr>
+  <tr><td><code>.r(what, signal, x) .calm()</code></td><td>react to sound: up to ×x (×1 in silence)</td></tr>
+  <tr><td><code>.add(n) .remove(n)</code></td><td>birds on the fly</td></tr>
+  <tr><td><code>trail(a) fade() soundMeter()</code></td><td>screen and sound</td></tr>
+  <tr><td><code>bass() mid() treble() amp()</code></td><td>audio signals (0..1)</td></tr>
 </table>
 
 </main>
