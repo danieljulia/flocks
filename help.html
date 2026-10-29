@@ -78,6 +78,16 @@ flocking rules, no sound. Everything else is something you add.</p>
 <p><b>Important:</b> don't use <code>let</code>/<code>const</code> at the top level;
 write plain globals (<code>f = flock(...)</code>) so running again doesn't break.</p>
 
+<h3>Running again keeps the birds</h3>
+<p>When you run again, each <code>flock()</code> reuses the flock it created last time: the
+settings start from the defaults and take your new code, but the birds stay where they are
+and nothing jumps. Flocks are matched by order (first call ↔ first flock). If you want to
+reorder your code freely, give them a name:</p>
+<pre><code>a = flock('river', 40)   <span class="c">// always the same flock, wherever this line is</span>
+b = flock('dust', 100)</code></pre>
+<p>Changing the number of birds adds or removes only the difference. To start from scratch,
+change the name or reload the page.</p>
+
 <h2>Look</h2>
 <p>All methods are <b>chainable</b>:</p>
 <pre><code>f = flock(40)
@@ -118,6 +128,7 @@ how strongly they steer (1 by default).</p>
   <tr><td><code>mid()</code></td><td>mid (800–2600 Hz)</td></tr>
   <tr><td><code>treble()</code></td><td>high (2.6–14 kHz)</td></tr>
   <tr><td><code>amp()</code></td><td>overall volume</td></tr>
+  <tr><td><code>beat()</code></td><td>a pulse on every bass hit</td></tr>
 </table>
 <p>The mic turns on with your first click or key press (browsers require it).</p>
 <p>To make a flock react, use <code>r(what, signal, times)</code>:</p>
@@ -126,12 +137,38 @@ f.<span class="k">r</span>('spd', mid,    1.5)  <span class="c">// speed: up to 
 f.<span class="k">r</span>('wnd', treble, 3)    <span class="c">// wandering: up to x3 with the highs</span>
 f.<span class="k">r</span>('rad', () =&gt; mouseX / width, 2) <span class="c">// any function works</span></code></pre>
 <p><code>what</code> is the name of the setter you want to move: <code>'rad'</code>,
-<code>'spd'</code> or <code>'wnd'</code>. <code>times</code> is the <b>maximum
+<code>'spd'</code>, <code>'wnd'</code>, <code>'per'</code>, <code>'coh'</code>,
+<code>'ali'</code> or <code>'sep'</code>. <code>times</code> is the <b>maximum
 multiplier</b>: in silence nothing changes, at full signal the value is multiplied by
 <code>times</code>. Below 1 it shrinks instead: <code>r('rad', bass, 0.5)</code>.
 You can stack several <code>r()</code> calls. <code>calm()</code> removes them all.</p>
-<p><b>Careful with <code>wnd</code>:</b> if the base value is 0, multiplying does nothing.
-Give it a base first: <code>flock(30).wnd(0.3).r('wnd', treble, 3)</code>.</p>
+
+<h3>Ranges: from a value to another</h3>
+<p>Give two numbers instead of one and the signal moves the value <b>between them</b>,
+ignoring the setter:</p>
+<pre><code>f.<span class="k">r</span>('rad', bass, 2, 20)   <span class="c">// 2 in silence → 20 with full bass</span>
+f.<span class="k">r</span>('coh', mid, 0, 3)     <span class="c">// the flock gathers when the mids come in</span></code></pre>
+<p>Ranges also work when the base value is 0, where multiplying does nothing
+(<code>coh</code>, <code>ali</code>, <code>sep</code> are 0 by default).</p>
+
+<h3>Color</h3>
+<p>The color reacts through four props, in HSB: <code>'hue'</code> (0–360),
+<code>'sat'</code> and <code>'bri'</code> (0–100), <code>'alpha'</code> (0–255).
+Ranges are the natural way to use them:</p>
+<pre><code>f.<span class="k">r</span>('hue', mid, 180, 320)   <span class="c">// cyan → magenta with the mids</span>
+f.<span class="k">r</span>('alpha', amp, 40, 255)  <span class="c">// transparent in silence, solid when loud</span>
+f.<span class="k">r</span>('bri', beat, 3)         <span class="c">// flash on every hit</span></code></pre>
+<p>Hue and saturation do nothing visible on white or grey: give the flock a color first.</p>
+
+<h3>Smooth signals and beats</h3>
+<pre><code>bass.<span class="k">smooth</span>(0.9)     <span class="c">// smoothed: 0 = raw, 0.99 = very slow</span>
+<span class="k">beat</span>()               <span class="c">// 1 on every bass hit, then fades out</span>
+mid.<span class="k">beat</span>(0.5)        <span class="c">// pulse when mid goes over 0.5</span>
+treble.<span class="k">beat</span>(0.6, 0.95) <span class="c">// slower fade</span>
+<span class="k">sig</span>(() =&gt; mouseX / width).<span class="k">smooth</span>(0.95) <span class="c">// any function can be a signal</span></code></pre>
+<p>Use them anywhere a signal goes: <code>f.r('rad', bass.smooth(0.9), 4)</code>,
+<code>f.r('spd', beat, 3)</code>. Create smoothed or beat signals inside <code>init()</code>
+(not in <code>live()</code>), because each one keeps its own memory.</p>
 <p><code>soundMeter()</code> shows the sound bars so you can calibrate by eye.</p>
 
 <h2>Screen</h2>
@@ -168,6 +205,7 @@ function live() {
     .r('rad', bass, 5)        <span class="c">// radius up to x5 with the bass</span>
     .r('spd', mid, 2)         <span class="c">// speed up to x2 with the mids</span>
     .r('wnd', treble, 3)      <span class="c">// wandering up to x3 with the highs</span>
+    .r('hue', mid, 300, 400)  <span class="c">// pink → orange with the mids</span>
 }
 
 function live() {
@@ -217,6 +255,7 @@ function live() {
 <h2>Quick reference</h2>
 <table>
   <tr><td><code>flock(n)</code></td><td>new flock of n birds (default 20), just wandering</td></tr>
+  <tr><td><code>flock('name', n)</code></td><td>named flock: reused across runs wherever it is in the code</td></tr>
   <tr><td><code>.col(c) .rad(r) .spd(s)</code></td><td>color · radius · speed</td></tr>
   <tr><td><code>.line(on)</code></td><td>strokes instead of circles</td></tr>
   <tr><td><code>.flocking(w)</code></td><td>turn on cohesion + alignment + separation</td></tr>
@@ -224,9 +263,12 @@ function live() {
   <tr><td><code>.wnd .nsc</code></td><td>random wandering and its noise scale</td></tr>
   <tr><td><code>.dir(a, v) .dirOff()</code></td><td>main heading and its variability</td></tr>
   <tr><td><code>.r(what, signal, x) .calm()</code></td><td>react to sound: up to ×x (×1 in silence)</td></tr>
+  <tr><td><code>.r(what, signal, min, max)</code></td><td>react to sound: from min (silence) to max (loud)</td></tr>
+  <tr><td><code>'hue' 'sat' 'bri' 'alpha'</code></td><td>color props for <code>r()</code></td></tr>
+  <tr><td><code>bass.smooth(k) bass.beat(t) sig(fn)</code></td><td>smoothed signals, pulses, custom signals</td></tr>
   <tr><td><code>.add(n) .remove(n)</code></td><td>birds on the fly</td></tr>
   <tr><td><code>trail(a) fade() soundMeter()</code></td><td>screen and sound</td></tr>
-  <tr><td><code>bass() mid() treble() amp()</code></td><td>audio signals (0..1)</td></tr>
+  <tr><td><code>bass() mid() treble() amp() beat()</code></td><td>audio signals (0..1)</td></tr>
 </table>
 
 </main>

@@ -19,7 +19,9 @@ function init() {
   // .dir(0, 0.2)           // everybody goes right
   // .line()                // draw strokes instead of circles
   // .r('rad', bass, 4)     // size grows up to x4 with the bass
+  // .r('hue', mid, 180, 320) // color follows the mids
 }
+// running again keeps the birds where they are
 
 function live() {
   trail(0.1)                // 0 = endless trail ... 1 = no trail
@@ -43,6 +45,8 @@ h                hide/show this help
 ▸ START
   f = flock()          20 birds, just wandering
   f = flock(50)        50 birds
+  f = flock('a', 50)   named: keeps its birds even
+                       if you reorder the code
   f.draw()             inside live()
 
 ▸ LOOK  (chain them: f.col(..).rad(..))
@@ -64,9 +68,14 @@ h                hide/show this help
 
 ▸ SOUND  (signals 0..1)
   bass() mid() treble() amp()
+  beat()               pulse on every bass hit
+  bass.smooth(0.9)     smoother, less jitter
+  mid.beat(0.5)        pulse when mid goes over 0.5
   .r('rad', bass, 3)   radius x1 in silence → x3 loud
-  .r('spd', mid, 2)    speed up to x2
-  .r('wnd', treble, 3) wandering up to x3
+  .r('rad', bass, 2, 20)  radius 2 in silence → 20 loud
+  .r('spd', beat, 3)   speed jumps on each hit
+  .r('hue', mid, 180, 320)  color: hue sat bri alpha
+                       also: wnd per coh ali sep
   .calm()              remove all reactions
 
 ▸ MORE
@@ -84,6 +93,7 @@ let _help = null;
 
 function runCode(code) {
   try {
+    _newRun(); // flocks of this run reuse the ones of the last run
     (0, eval)(code); // indirect eval → global scope
     _err = null;
     if (typeof init === 'function') init();
@@ -191,7 +201,7 @@ function draw() {
     catch (e) { _err = e.message; }
   }
 
-  soundMeter(width - 130, 12, 110, 60); // sound bars, top right
+  soundMeter(width - 150, 12, 130, 60); // sound bars, top right
 
   if (_err) {
     fill(255, 90, 90); noStroke();
