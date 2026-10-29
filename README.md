@@ -5,6 +5,8 @@ A small live coding library for flocks (boids) that react to sound, built on
 [p5live](https://teddavis.org/p5live/) or in the bundled mini editor: you type a little,
 press Ctrl/Cmd+Enter and the flocks change right away without a restart.
 
+**Try it live: <https://danieljulia.github.io/flocks/>** (click once to turn on the mic)
+
 ```js
 function init() {
   f = flock(30)
