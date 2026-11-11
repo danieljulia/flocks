@@ -148,4 +148,9 @@ Props for `r()`: `rad spd wild see gap sync glow tail` and the color props `hue`
 
 ## License
 
-No license yet.
+flocks.js is free software under the **GNU LGPL v2.1** (see [`LICENSE`](LICENSE)), the same
+license as the libraries it is built on: [p5.js](https://github.com/processing/p5.js) and
+[p5.sound](https://github.com/processing/p5.js-sound), both LGPL 2.1 and bundled unmodified
+in `lib/`. In short: you can use flocks.js in any project, free or not, but changes to
+flocks.js itself have to stay under the LGPL. Your own sketches and the code you type in
+the editor are yours.

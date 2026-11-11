@@ -1,5 +1,6 @@
 /* ============================================================
    flocks.js — flocking live coding library for p5live
+   License: LGPL-2.1 (same as p5.js) — see LICENSE
    Requires: p5.js + p5.sound
    Quick start:
      f = flock()                 // 20 birds with RANDOM look and
