@@ -41,6 +41,7 @@ file also works in most browsers, but some of them block the microphone on `file
 | --- | --- |
 | `index.html` | Entry point: loads p5, p5.sound, the library and the editor |
 | `flocks.js` | The library: flocks, birds, audio analysis, signals |
+| `presets.js` | The examples of the editor menu (add yours) |
 | `flocks.config.js` | Ranges for the random starting values of every new flock (load it before `flocks.js`) |
 | `editor.js` | Mini live coding editor over the canvas |
 | `help.html` | Full guide with examples (the **guide** button in the editor) |
@@ -79,7 +80,11 @@ resets its settings and applies the new code.
 | `.line()` | continuous strokes instead of circles |
 | `.gap(px)` | comfortable distance: closer they push away, farther they pull (0 = off) |
 | `.sync(x)` | fly the same way as neighbors, 0..1 |
+| `.shape(s)` `.tail(x)` `.glow(x)` | `'dot'`, `'drop'` (oriented, with a tail) or `'line'`; tail length; halo 0..1 |
+| `.glide(g)` | changes of any parameter arrive smoothly (default 0.92, 0 = jump) |
 | `.see(px)` | how far each bird sees its neighbors |
+| `.chase(g, w)` `.flee(g, w)` | go for / run away from the nearest bird of another flock `g`. `w` = strength, can be a signal |
+| `.follow(g, w, r)` | orbit the center of flock `g` at `r` px. `w` and `r` can be signals |
 | `.wild(x) .nsc(s)` | improvisation (0..1) and its noise scale |
 | `.dir(angle, variability) .dirOff()` | main heading following a noise field |
 | `.add(n) .remove(n)` | birds on the fly |
@@ -97,13 +102,15 @@ every bass hit).
 | --- | --- |
 | `.r(prop, signal, x)` | multiply: ×1 in silence → ×x at full signal |
 | `.r(prop, signal, min, max)` | range: `min` in silence → `max` at full signal |
-| `.calm()` | remove all reactions |
+| `.calm()` | remove all reactions. A new flock starts with 1–3 **random** reactions (ranges in `flocks.config.js`); the first `.r()` you write replaces them |
 | `bass.smooth(0.9)` | smoothed signal |
 | `mid.beat(0.5)` | pulse when the signal goes over 0.5 |
 | `sig(fn)` | turn any function into a signal (e.g. `sig(() => mouseX / width)`) |
+| `bpm(n)` · `tap()` | tempo (the ♩ button in the editor taps) |
+| `phase` `bar` `tick` `lfo(n)` | tempo signals: ramp per beat, ramp per 4 beats, pulse on the beat, wave over `n` beats |
 | `soundMeter()` | sound bars on screen to calibrate |
 
-Props for `r()`: `rad spd wild see gap sync` and the color props `hue` (0–360),
+Props for `r()`: `rad spd wild see gap sync glow tail` and the color props `hue` (0–360),
 `sat`, `bri` (0–100), `alpha` (0–255).
 
 ### Screen

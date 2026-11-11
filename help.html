@@ -107,7 +107,13 @@ rules start at a random value; <code>gap(0)</code> and <code>sync(0)</code> turn
   <tr><td><code>.gap(25)</code></td><td>comfortable distance in px: closer they push away, farther they pull (0 = off). <code>12</code> tight swarm, <code>60</code> airy</td></tr>
   <tr><td><code>.sync(0.8)</code></td><td>fly the same way as neighbors (0..1)</td></tr>
   <tr><td><code>.wild(0.3)</code></td><td>improvisation (0 = none, 1 = lots)</td></tr>
+  <tr><td><code>.shape('drop')</code></td><td><code>'dot'</code>, <code>'drop'</code> (points where it goes, with a tail) or <code>'line'</code> (strokes)</td></tr>
+  <tr><td><code>.tail(4) .glow(0.8)</code></td><td>tail length of the drop · halo around each bird (0..1)</td></tr>
+  <tr><td><code>.glide(0.95)</code></td><td>every change arrives smoothly instead of jumping (default <code>0.92</code>, <code>0</code> = jump)</td></tr>
   <tr><td><code>.see(100)</code></td><td>how far each bird sees its neighbors, in px</td></tr>
+  <tr><td><code>.chase(g)</code></td><td>go for the nearest bird of another flock <code>g</code> (create <code>g</code> first)</td></tr>
+  <tr><td><code>.follow(g, 1, 150)</code></td><td>orbit the center of <code>g</code>: strength, radius in px (both can be signals)</td></tr>
+  <tr><td><code>.flee(g, 1.5)</code></td><td>run away from <code>g</code>; the strength can be a signal: <code>.flee(g, bass)</code></td></tr>
   <tr><td><code>.nsc(0.005)</code></td><td>noise scale (small = big, smooth currents)</td></tr>
 </table>
 <p>Birds <b>wrap around</b>: when they leave through one edge they come back through the opposite one.</p>
@@ -119,6 +125,21 @@ f.<span class="k">dirOff</span>()          <span class="c">// turn it off</span>
 <p>First parameter: <b>angle in radians</b>. Second: <b>variability</b>, from
 <code>0</code> (almost straight) to <code>1</code> (very wild). An optional third one sets
 how strongly they steer (1 by default).</p>
+
+<h2>Tempo</h2>
+<p>Besides the mic, the library has a clock. <code>bpm(128)</code> sets it; the <b>♩</b>
+button in the editor (or the <code>t</code> key) is a <b>tap tempo</b>: tap on every beat and
+it locks to you. It gives you four signals that work in <code>r()</code> like any other:</p>
+<table>
+  <tr><td><code>phase</code></td><td>ramp that goes 0 → 1 on every beat</td></tr>
+  <tr><td><code>bar</code></td><td>ramp 0 → 1 every 4 beats</td></tr>
+  <tr><td><code>tick</code></td><td>pulse: 1 on the beat, fading before the next</td></tr>
+  <tr><td><code>lfo(8)</code></td><td>smooth wave 0 → 1 → 0 over 8 beats</td></tr>
+</table>
+<pre><code>bpm(120)
+f.<span class="k">r</span>('gap', lfo(8), 15, 70)   <span class="c">// the swarm opens and closes every 8 beats</span>
+f.<span class="k">r</span>('rad', tick, 1.6)         <span class="c">// the radius pulses on every beat</span></code></pre>
+<p>The <b>examples</b> menu of the editor has ready-made pieces to start from.</p>
 
 <h2>Sound</h2>
 <p>The library listens to the mic and gives you 4 signals from 0 to 1:</p>
@@ -141,6 +162,9 @@ or <code>'sync'</code>. <code>times</code> is the <b>maximum
 multiplier</b>: in silence nothing changes, at full signal the value is multiplied by
 <code>times</code>. Below 1 it shrinks instead: <code>r('rad', bass, 0.5)</code>.
 You can stack several <code>r()</code> calls. <code>calm()</code> removes them all.</p>
+<p>A new flock already starts with <b>1–3 random reactions</b> (for example <code>glow</code> with the
+treble, <code>spd</code> with the beat), so it responds to the music without writing anything.
+The first <code>r()</code> you write <b>replaces</b> them. Ranges: <code>react</code> in <code>flocks.config.js</code>.</p>
 
 <h3>Ranges: from a value to another</h3>
 <p>Give two numbers instead of one and the signal moves the value <b>between them</b>,

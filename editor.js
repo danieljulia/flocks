@@ -58,7 +58,11 @@ h                hide/show this help
   .col('red')          color
   .rad(4)              radius
   .spd(3)              speed
-  .line()              strokes instead of circles
+  .shape('drop')       'dot' · 'drop' (tail, points where
+                       it goes) · 'line' (strokes)
+  .tail(4)             tail length of the drop
+  .glow(0.8)           halo around each bird (0..1)
+  .glide(0.95)         changes arrive smoothly (0 = jump)
 
 ▸ BEHAVIOUR  (random start, then yours)
   .gap(25)             comfy distance in px: closer
@@ -66,6 +70,11 @@ h                hide/show this help
   .sync(0.8)           fly the same way (0..1)
   .wild(0.3)           improvise (0 = none, 1 = lots)
   .see(100)            how far each bird sees (px)
+  .chase(g)            go for the nearest bird of flock g
+  .follow(g, 1, 150)   orbit the center of g (strength,
+                       radius in px)
+  .flee(g, 1.5)        run away from g (strength can
+                       be a signal: .flee(g, bass))
   .dir(0, 0.2)         main heading: angle,
                        variability (0 straight, 1 wild)
   .dirOff()            no main heading
@@ -79,8 +88,21 @@ h                hide/show this help
   .r('rad', bass, 2, 20)  radius 2 in silence → 20 loud
   .r('spd', beat, 3)   speed jumps on each hit
   .r('hue', mid, 180, 320)  color: hue sat bri alpha
-                       also: wild see gap sync
+                       also: wild see gap sync glow tail
   .calm()              remove all reactions
+                       (a new flock starts with a few random
+                       ones; your first .r() replaces them)
+
+▸ TEMPO  (detected from the music, shown in the bar:
+          ● locked · ○ listening)
+  ♩ button / key t     tap tempo by hand
+  bpm(128)             fix the tempo (bpm('auto') = listen)
+  tempo                speed of the music: 60bpm=0 … 180=1
+  phase                0→1 ramp on every beat
+  bar                  0→1 ramp every 4 beats
+  tick                 pulse on the beat, then fades
+  lfo(8)               smooth wave over 8 beats
+  .r('gap', lfo(8), 15, 70)   breathes with the tempo
 
 ▸ MORE
   .add(10) .remove(10) birds on the fly
@@ -97,9 +119,9 @@ const _HL_KEYWORDS = new Set(['function','const','let','var','return','if','else
   'of','in','new','true','false','null','undefined','this','break','continue','switch','case','typeof']);
 const _HL_LIB = new Set(['flock','bass','mid','treble','amp','beat','sig','trail','fade','soundMeter',
   'init','live','audioStart','color','random','noise','width','height','mouseX','mouseY',
-  'PI','TAU','HALF_PI','QUARTER_PI','sin','cos','abs','min','max','map','constrain','frameCount']);
+  'bpm','tap','phase','bar','tick','lfo','tempo','PI','TAU','HALF_PI','QUARTER_PI','sin','cos','abs','min','max','map','constrain','frameCount']);
 const _HL_METHODS = new Set(['col','rad','spd','line','gap','sync','wild','see','dir','dirOff',
-  'nsc','swl','add','remove','count','r','calm','draw','smooth']);
+  'shape','tail','glow','glide','chase','flee','follow','nsc','swl','add','remove','count','r','calm','draw','smooth']);
 const _hlEsc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 function highlight(code) {
   const re = /(\/\/[^\n]*|\/\*[\s\S]*?(?:\*\/|$))|("(?:\\.|[^"\\\n])*"?|'(?:\\.|[^'\\\n])*'?|`(?:\\.|[^`\\])*`?)|(\b\d+\.?\d*\b|\B\.\d+\b)|([A-Za-z_$][\w$]*)|([\s\S])/g;
@@ -133,6 +155,8 @@ let _ta = null;
 let _gutter = null;
 let _help = null;
 let _hlPre = null;
+let _bpmBtn = null;
+let _autoBtn = null;
 
 function runCode(code) {
   try {
@@ -278,11 +302,35 @@ function setup() {
     });
     b.onclick = fn;
     bar.appendChild(b);
+    return b;
   };
   mkBtn('▶ run', () => runCode(_ta.value));
   mkBtn('code', toggleEditor);
   mkBtn('help', toggleHelp);
   mkBtn('guide', () => window.open('help.html', '_blank'));
+  // tap tempo: click on every beat (shows the current bpm)
+  // examples menu
+  const sel = document.createElement('select');
+  Object.assign(sel.style, {
+    background: 'rgba(0,0,0,0.55)', color: 'rgba(255,255,255,0.85)',
+    font: '14px monospace', border: '1px solid rgba(255,255,255,0.25)',
+    borderRadius: '4px', padding: '5px 8px', cursor: 'pointer',
+  });
+  sel.add(new Option('examples ▾', ''));
+  PRESETS.forEach((p, i) => sel.add(new Option(p.name, i)));
+  sel.onchange = () => {
+    if (sel.value === '') return;
+    _ta.value = PRESETS[+sel.value].code;
+    background(0); // clean start (long trails of the previous one)
+    updateGutter();
+    runCode(_ta.value);
+    sel.blur();
+  };
+  bar.appendChild(sel);
+  _bpmBtn = mkBtn('♩ 120', () => tap());
+  _bpmBtn.title = 'tempo (detected from the music). Click on every beat to tap it by hand';
+  _autoBtn = mkBtn('auto', () => bpm('auto'));
+  _autoBtn.title = 'listen to the music and follow its tempo';
   mkBtn('github', () => window.open('https://github.com/danieljulia/flocks', '_blank'));
 
   function toggleEditor() {
@@ -318,6 +366,14 @@ function draw() {
     pop();
   }
 
+  const bt = '♩ ' + Math.round(bpm());
+  if (_bpmBtn && _bpmBtn.textContent !== bt) _bpmBtn.textContent = bt;
+  if (_autoBtn) { // ● locked on the music · ○ listening · manual (click to listen again)
+    const at = !_tAuto ? 'manual' : _tLock ? '● auto' : '○ auto';
+    if (_autoBtn.textContent !== at) _autoBtn.textContent = at;
+    _autoBtn.style.color = _tAuto && _tLock ? '#7dffa0' : 'rgba(255,255,255,0.75)';
+    _bpmBtn.style.color = _tAuto && _tLock ? '#7dffa0' : 'rgba(255,255,255,0.75)';
+  }
   soundMeter(width - 150, 8, 130, 24); // sound bars, in the top bar
 
   const err = _err || _liveErr;
@@ -336,6 +392,7 @@ function draw() {
 function keyPressed() {
   if (document.activeElement === _ta) return; // editing: leave it alone
   if (key === 'h' || key === 'H') toggleHelp();
+  if (key === 't' || key === 'T') tap();
   // on-the-fly changes to the most recently created flock
   if (_lastFlock) {
     if (key === 'a') _lastFlock.add(10);
