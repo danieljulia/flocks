@@ -56,13 +56,14 @@ Write a little, see results right away.</p>
 function live() {
   f.draw()
 }</code></pre>
-<p>The birds just wander around. That is the default on purpose: <b>simple</b>. No
-flocking rules, no sound. Everything else is something you add.</p>
+<p>Every new flock starts with a <b>random</b> look and behavior (radius, speed, color,
+strokes, gap, sync, wild, see), picked inside the ranges of <code>flocks.config.js</code>.
+Then you change whatever you want: <code>flock(20).rad(1).col('red')</code>. No sound until you add it.</p>
 <p>Now add things one at a time, running after each change:</p>
 <pre><code>function init() {
   f = flock(30)
     .<span class="k">col</span>('#5cd6ff')     <span class="c">// 1. a color</span>
-    .<span class="k">flocking</span>()        <span class="c">// 2. birds stick together</span>
+    .<span class="k">gap</span>(25).<span class="k">sync</span>(0.8) <span class="c">// 2. birds stick together</span>
     .<span class="k">r</span>('rad', bass, 4) <span class="c">// 3. they grow with the bass (click once to turn on the mic)</span>
 }</code></pre>
 
@@ -100,15 +101,13 @@ one, as thick as the circle. With a long trail (<code>trail(0.02)</code>) the st
 together. <code>line(false)</code> goes back to circles.</p>
 
 <h2>Behaviour</h2>
-<p>A new flock only <b>wanders</b> following a Perlin noise field. The three classic boid
-rules are <b>off</b> until you turn them on:</p>
+<p>Birds drift on a Perlin noise field. The two flocking
+rules start at a random value; <code>gap(0)</code> and <code>sync(0)</code> turn them off:</p>
 <table>
-  <tr><td><code>.flocking()</code></td><td>all three rules at once (<code>flocking(2)</code> stronger, <code>flocking(0)</code> off)</td></tr>
-  <tr><td><code>.coh(1.8)</code></td><td>cohesion: stay together</td></tr>
-  <tr><td><code>.ali(2)</code></td><td>alignment: fly the same way as neighbors</td></tr>
-  <tr><td><code>.sep(2)</code></td><td>separation: don't collide</td></tr>
-  <tr><td><code>.per(140)</code></td><td>perception: how far each bird sees its neighbors</td></tr>
-  <tr><td><code>.wnd(0.3)</code></td><td>random wandering (0 = none, pure boids)</td></tr>
+  <tr><td><code>.gap(25)</code></td><td>comfortable distance in px: closer they push away, farther they pull (0 = off). <code>12</code> tight swarm, <code>60</code> airy</td></tr>
+  <tr><td><code>.sync(0.8)</code></td><td>fly the same way as neighbors (0..1)</td></tr>
+  <tr><td><code>.wild(0.3)</code></td><td>improvisation (0 = none, 1 = lots)</td></tr>
+  <tr><td><code>.see(100)</code></td><td>how far each bird sees its neighbors, in px</td></tr>
   <tr><td><code>.nsc(0.005)</code></td><td>noise scale (small = big, smooth currents)</td></tr>
 </table>
 <p>Birds <b>wrap around</b>: when they leave through one edge they come back through the opposite one.</p>
@@ -134,11 +133,11 @@ how strongly they steer (1 by default).</p>
 <p>To make a flock react, use <code>r(what, signal, times)</code>:</p>
 <pre><code>f.<span class="k">r</span>('rad', bass,   2)    <span class="c">// radius: x1 in silence → x2 with full bass</span>
 f.<span class="k">r</span>('spd', mid,    1.5)  <span class="c">// speed: up to x1.5 with the mids</span>
-f.<span class="k">r</span>('wnd', treble, 3)    <span class="c">// wandering: up to x3 with the highs</span>
+f.<span class="k">r</span>('wild', treble, 3)   <span class="c">// improvisation: up to x3 with the highs</span>
 f.<span class="k">r</span>('rad', () =&gt; mouseX / width, 2) <span class="c">// any function works</span></code></pre>
 <p><code>what</code> is the name of the setter you want to move: <code>'rad'</code>,
-<code>'spd'</code>, <code>'wnd'</code>, <code>'per'</code>, <code>'coh'</code>,
-<code>'ali'</code> or <code>'sep'</code>. <code>times</code> is the <b>maximum
+<code>'spd'</code>, <code>'wild'</code>, <code>'see'</code>, <code>'gap'</code>
+or <code>'sync'</code>. <code>times</code> is the <b>maximum
 multiplier</b>: in silence nothing changes, at full signal the value is multiplied by
 <code>times</code>. Below 1 it shrinks instead: <code>r('rad', bass, 0.5)</code>.
 You can stack several <code>r()</code> calls. <code>calm()</code> removes them all.</p>
@@ -147,9 +146,9 @@ You can stack several <code>r()</code> calls. <code>calm()</code> removes them a
 <p>Give two numbers instead of one and the signal moves the value <b>between them</b>,
 ignoring the setter:</p>
 <pre><code>f.<span class="k">r</span>('rad', bass, 2, 20)   <span class="c">// 2 in silence → 20 with full bass</span>
-f.<span class="k">r</span>('coh', mid, 0, 3)     <span class="c">// the flock gathers when the mids come in</span></code></pre>
+f.<span class="k">r</span>('gap', mid, 80, 12)   <span class="c">// the flock tightens when the mids come in</span></code></pre>
 <p>Ranges also work when the base value is 0, where multiplying does nothing
-(<code>coh</code>, <code>ali</code>, <code>sep</code> are 0 by default).</p>
+(a range also works if <code>gap</code> or <code>sync</code> is 0).</p>
 
 <h3>Color</h3>
 <p>The color reacts through four props, in HSB: <code>'hue'</code> (0–360),
@@ -186,7 +185,7 @@ treble.<span class="k">beat</span>(0.6, 0.95) <span class="c">// slower fade</sp
   river = flock(40)
     .col('#5cd6ff')
     .rad(3).spd(2)
-    .per(60).ali(2).coh(0.5)
+    .see(60).sync(0.9).gap(30)
     .dir(0, 0.15)    <span class="c">// current to the right, almost straight</span>
     .line()          <span class="c">// strokes instead of circles</span>
 }
@@ -201,10 +200,10 @@ function live() {
   bubble = flock(30)
     .col('#ff5c8a')
     .rad(5).spd(1.5)
-    .per(120).coh(2).sep(2.5)
+    .see(120).gap(35)
     .r('rad', bass, 5)        <span class="c">// radius up to x5 with the bass</span>
     .r('spd', mid, 2)         <span class="c">// speed up to x2 with the mids</span>
-    .r('wnd', treble, 3)      <span class="c">// wandering up to x3 with the highs</span>
+    .r('wild', treble, 3)     <span class="c">// improvisation up to x3 with the highs</span>
     .r('hue', mid, 300, 400)  <span class="c">// pink → orange with the mids</span>
 }
 
@@ -218,8 +217,8 @@ function live() {
   wind = flock(80)
     .col(color(255, 170))            <span class="c">// semi-transparent white</span>
     .rad(1.5).spd(3)
-    .per(50).ali(1.5).sep(2)
-    .wnd(0.2)
+    .see(50).sync(0.7).gap(15)
+    .wild(0.2)
     .dir(QUARTER_PI, 0.9)            <span class="c">// diagonal, very turbulent</span>
     .r('spd', treble, 6)             <span class="c">// speed up to x6 with the highs</span>
 }
@@ -233,15 +232,15 @@ function live() {
 <h3>4 · Three flocks <span class="sub">— the full demo</span></h3>
 <pre><code>function init() {
   giant = flock(25).col('#ff5c8a').rad(4).spd(1.5)
-    .per(140).coh(1.8).sep(2).wnd(0.15)
+    .gap(40).see(140).wild(0.15)
     .r('rad', bass, 4)
 
   smalls = flock(60).col('#5cd6ff').rad(2.5).spd(2.5)
-    .per(50).ali(2).coh(0.7).sep(1.5)
+    .gap(12).sync(0.9).see(50)
     .r('spd', treble, 5)
 
   mist = flock(30).col(color(200, 35)).rad(5).spd(0.8)
-    .per(90).flocking(0.8).wnd(0.4)
+    .gap(30).sync(0.4).see(90).wild(0.4)
     .r('rad', bass, 2.5)
 }
 
@@ -254,13 +253,13 @@ function live() {
 
 <h2>Quick reference</h2>
 <table>
-  <tr><td><code>flock(n)</code></td><td>new flock of n birds (default 20), just wandering</td></tr>
+  <tr><td><code>flock(n)</code></td><td>new flock of n birds (default 20), random look and behavior</td></tr>
   <tr><td><code>flock('name', n)</code></td><td>named flock: reused across runs wherever it is in the code</td></tr>
   <tr><td><code>.col(c) .rad(r) .spd(s)</code></td><td>color · radius · speed</td></tr>
   <tr><td><code>.line(on)</code></td><td>strokes instead of circles</td></tr>
-  <tr><td><code>.flocking(w)</code></td><td>turn on cohesion + alignment + separation</td></tr>
-  <tr><td><code>.coh .ali .sep .per</code></td><td>each flocking rule on its own</td></tr>
-  <tr><td><code>.wnd .nsc</code></td><td>random wandering and its noise scale</td></tr>
+  <tr><td><code>.gap(px) .sync(x)</code></td><td>comfortable distance · fly the same way</td></tr>
+  <tr><td><code>.see(px)</code></td><td>how far each bird sees</td></tr>
+  <tr><td><code>.wild(x) .nsc</code></td><td>improvisation and its noise scale</td></tr>
   <tr><td><code>.dir(a, v) .dirOff()</code></td><td>main heading and its variability</td></tr>
   <tr><td><code>.r(what, signal, x) .calm()</code></td><td>react to sound: up to ×x (×1 in silence)</td></tr>
   <tr><td><code>.r(what, signal, min, max)</code></td><td>react to sound: from min (silence) to max (loud)</td></tr>

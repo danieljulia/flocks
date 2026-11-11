@@ -11,7 +11,7 @@ press Ctrl/Cmd+Enter and the flocks change right away without a restart.
 function init() {
   f = flock(30)
     .col('#5cd6ff')
-    .flocking()          // birds stick together
+    .gap(25).sync(0.8)   // birds stick together
     .r('rad', bass, 4)   // they grow with the bass
 }
 
@@ -41,6 +41,7 @@ file also works in most browsers, but some of them block the microphone on `file
 | --- | --- |
 | `index.html` | Entry point: loads p5, p5.sound, the library and the editor |
 | `flocks.js` | The library: flocks, birds, audio analysis, signals |
+| `flocks.config.js` | Ranges for the random starting values of every new flock (load it before `flocks.js`) |
 | `editor.js` | Mini live coding editor over the canvas |
 | `help.html` | Full guide with examples (the **guide** button in the editor) |
 | `example.js` | The same ideas as a plain p5 sketch, without the editor |
@@ -72,13 +73,14 @@ resets its settings and applies the new code.
 
 | Call | Effect |
 | --- | --- |
-| `flock(n)` | new flock of `n` birds (default 20). By default they only wander |
+| `flock(n)` | new flock of `n` birds (default 20). Look and behavior start **random**, inside the ranges of `flocks.config.js` |
 | `flock('name', n)` | named flock, reused across runs wherever it is in the code |
 | `.col(c) .rad(r) .spd(s)` | color, radius, speed |
 | `.line()` | continuous strokes instead of circles |
-| `.flocking(w)` | turn on cohesion + alignment + separation |
-| `.coh(w) .ali(w) .sep(w) .per(r)` | each boid rule, and the perception radius |
-| `.wnd(w) .nsc(s)` | noise wandering and its scale |
+| `.gap(px)` | comfortable distance: closer they push away, farther they pull (0 = off) |
+| `.sync(x)` | fly the same way as neighbors, 0..1 |
+| `.see(px)` | how far each bird sees its neighbors |
+| `.wild(x) .nsc(s)` | improvisation (0..1) and its noise scale |
 | `.dir(angle, variability) .dirOff()` | main heading following a noise field |
 | `.add(n) .remove(n)` | birds on the fly |
 | `.draw()` | update and draw (call it in `live()`) |
@@ -101,7 +103,7 @@ every bass hit).
 | `sig(fn)` | turn any function into a signal (e.g. `sig(() => mouseX / width)`) |
 | `soundMeter()` | sound bars on screen to calibrate |
 
-Props for `r()`: `rad spd wnd per coh ali sep` and the color props `hue` (0–360),
+Props for `r()`: `rad spd wild see gap sync` and the color props `hue` (0–360),
 `sat`, `bri` (0–100), `alpha` (0–255).
 
 ### Screen
@@ -113,7 +115,7 @@ Props for `r()`: `rad spd wnd per coh ali sep` and the color props `hue` (0–36
 
 ## How it works
 
-- Each bird follows Reynolds' boid rules (cohesion, alignment, separation) plus a Perlin
+- Each bird follows two boid rules (a spring toward a comfortable `gap`, and `sync` with neighbors) plus a Perlin
   noise drift. The world wraps around like a torus.
 - Neighbors are found through a spatial grid, so large flocks stay fast.
 - Audio bands use the loudest 20% of FFT bins in each range (bass 20–800 Hz, mid

@@ -2,15 +2,15 @@
    flocks.js — flocking live coding library for p5live
    Requires: p5.js + p5.sound
    Quick start:
-     f = flock()                 // 20 birds wandering on a noise
-                                 // field. Simple on purpose: no
-                                 // flocking rules, no sound reaction
+     f = flock()                 // 20 birds with RANDOM look and
+                                 // behavior (ranges: flocks.config.js)
      f.draw()                    // inside draw()
    Then change whatever you want (everything is chainable):
      f.col('red').rad(8).spd(3)  // color, radius, speed
-     f.flocking()                // turn on the classic boid rules
-     f.coh(2).ali(1).sep(3)      // ...or tune each rule on its own
-     f.per(100)                  // how far each bird sees
+     f.gap(25)                   // comfortable distance between birds (px)
+     f.sync(0.8)                 // fly the same way as neighbors (0..1)
+     f.wild(0.3)                 // improvisation (0..1)
+     f.see(100)                  // how far each bird sees (px)
      f.r('rad', bass, 2)         // radius: ×1 in silence → ×2 at full bass
      f.r('rad', bass, 2, 20)     // radius: 2 in silence → 20 at full bass
      f.r('hue', mid, 180, 300)   // color reacts too (hue, sat, bri, alpha)
@@ -136,6 +136,13 @@ const treble = sig(() => _band('treble'));
 const amp    = sig(() => (_au ? _norm('amp', _au.mic.getLevel()) : 0));
 const beat   = bass.beat(); // pulse on every bass hit
 
+// any setting can be a number or a signal (bass, () => ...): signals are
+// read now; NaN/garbage falls back to d so a typo can't break the birds
+function _num(x, d = 0) {
+  if (typeof x === 'function') x = x();
+  return Number.isFinite(x) ? x : d;
+}
+
 // desired direction at magnitude sp, minus current velocity,
 // clamped to maxF → steering force
 function _steer(dx, dy, vx, vy, sp, maxF) {
@@ -184,11 +191,10 @@ class Bird {
     const maxF = Math.max(0.05, sp * 0.15);
     let ax = 0, ay = 0;
 
-    if (v.ali || v.coh || v.sep) { // skip the neighbor loop if no rules are on
-      const perR2 = v.per * v.per;
-      const sepR2 = perR2 * 0.16; // separation = 40% of perception
-      let aliX = 0, aliY = 0, cohX = 0, cohY = 0, sepX = 0, sepY = 0;
-      let n = 0, ns = 0;
+    if (v.sync || v.gap) { // skip the neighbor loop if both rules are off
+      const see = Math.max(v.see, v.gap * 1.5); // must see farther than the gap
+      const see2 = see * see;
+      let aliX = 0, aliY = 0, gx = 0, gy = 0, n = 0;
 
       for (const o of others) {
         if (o === this) continue;
@@ -197,42 +203,38 @@ class Bird {
         if (dx >  width / 2) dx -= width;  else if (dx < -width / 2) dx += width;
         if (dy > height / 2) dy -= height; else if (dy < -height / 2) dy += height;
         const d2 = dx * dx + dy * dy;
-        if (d2 > perR2) continue;
-        aliX += o.v.x; aliY += o.v.y; // alignment: mean velocity
-        cohX += dx;    cohY += dy;    // cohesion: toward the group center
+        if (d2 > see2 || d2 < 0.0001) continue;
+        aliX += o.v.x; aliY += o.v.y; // sync: mean velocity
         n++;
-        if (d2 < sepR2 && d2 > 0.0001) { // separation: push away
+        if (v.gap) { // gap: a spring toward the comfortable distance
           const d = Math.sqrt(d2);
-          sepX -= dx / (d * d); sepY -= dy / (d * d);
-          ns++;
+          const k = d < v.gap ? 3 * (d - v.gap) / v.gap   // too close: push (stronger, -3..0)
+                              : 0.3 * (d - v.gap) / Math.max(1, see - v.gap); // too far: pull (gentle, 0..0.3)
+          gx += (dx / d) * k; gy += (dy / d) * k;
         }
       }
 
       if (n > 0) {
-        if (v.ali) {
+        if (v.sync) {
           const [sx, sy] = _steer(aliX, aliY, this.v.x, this.v.y, sp, maxF);
-          ax += sx * v.ali; ay += sy * v.ali;
+          ax += sx * v.sync * 2; ay += sy * v.sync * 2;
         }
-        if (v.coh) {
-          const [sx, sy] = _steer(cohX, cohY, this.v.x, this.v.y, sp, maxF);
-          ax += sx * v.coh; ay += sy * v.coh;
+        if (v.gap && (gx || gy)) {
+          const [sx, sy] = _steer(gx, gy, this.v.x, this.v.y, sp, maxF);
+          ax += sx * 2; ay += sy * 2;
         }
-      }
-      if (ns > 0 && v.sep) {
-        const [sx, sy] = _steer(sepX, sepY, this.v.x, this.v.y, sp, maxF);
-        ax += sx * v.sep; ay += sy * v.sep;
       }
     }
-    if (v.wnd) { // noise drift (organic wandering)
+    if (v.wild) { // noise drift (improvisation)
       const a = noise(this.p.x * f._nsc, this.p.y * f._nsc, f._t) * TAU * f._swl;
-      ax += Math.cos(a) * v.wnd;
-      ay += Math.sin(a) * v.wnd;
+      ax += Math.cos(a) * v.wild;
+      ay += Math.sin(a) * v.wild;
     }
-    if (f._wD) { // main heading following a noise field:
-                 // _dvr = 0 → almost straight, _dvr = 1 → very variable
-      const a = f._dir + (noise(this.p.x * f._nsc, this.p.y * f._nsc, f._t) - 0.5) * TAU * f._dvr;
+    if (v.wD) { // main heading following a noise field:
+                // dvr = 0 → almost straight, dvr = 1 → very variable
+      const a = v.dir + (noise(this.p.x * f._nsc, this.p.y * f._nsc, f._t) - 0.5) * TAU * v.dvr;
       const [sx, sy] = _steer(Math.cos(a), Math.sin(a), this.v.x, this.v.y, sp, maxF);
-      ax += sx * f._wD; ay += sy * f._wD;
+      ax += sx * v.wD; ay += sy * v.wD;
     }
 
     this.v.x += ax; this.v.y += ay;
@@ -240,6 +242,14 @@ class Bird {
     if (vm > sp) { this.v.x = (this.v.x / vm) * sp; this.v.y = (this.v.y / vm) * sp; }
     this.p.x = (this.p.x + this.v.x + width)  % width;  // torus/wrap
     this.p.y = (this.p.y + this.v.y + height) % height;
+    // a bad value got through (NaN): respawn instead of staying broken
+    if (!Number.isFinite(this.p.x + this.p.y + this.v.x + this.v.y)) this._respawn();
+  }
+
+  _respawn() {
+    this.p.set(random(width), random(height));
+    this.pp.set(this.p);
+    this.v = p5.Vector.random2D().mult(2);
   }
 
   draw(r, lineMode) {
@@ -255,17 +265,42 @@ class Bird {
   }
 }
 
+// ---------- RANDOM DEFAULTS ----------
+// ranges come from flocks.config.js (FLOCKS_CONFIG); these are the fallback
+const _CFG_DEFAULT = {
+  rad: [2, 8], spd: [1, 3], gap: [12, 50], sync: [0, 0.9], wild: [0.1, 0.6],
+  see: [50, 120], line: 0.15,
+  color: { hue: [0, 360], sat: [35, 90], bri: [75, 100], alpha: [170, 255] },
+};
+const _rr = (r, d) => { // [min, max] → random in between · number → itself
+  r = r ?? d;
+  return Array.isArray(r) ? random(r[0], r[1]) : r;
+};
+// one roll of starting values for a new flock
+function _rollDefaults() {
+  const c = (typeof FLOCKS_CONFIG !== 'undefined' && FLOCKS_CONFIG) || {};
+  const D = _CFG_DEFAULT, cc = c.color || {}, dc = D.color;
+  const [r, g, b] = _hsb2rgb(_rr(cc.hue, dc.hue), _rr(cc.sat, dc.sat), _rr(cc.bri, dc.bri));
+  return {
+    rad: _rr(c.rad, D.rad), spd: _rr(c.spd, D.spd), gap: _rr(c.gap, D.gap),
+    sync: _rr(c.sync, D.sync), wild: _rr(c.wild, D.wild), see: _rr(c.see, D.see),
+    line: random() < (c.line ?? D.line),
+    col: [r, g, b, _rr(cc.alpha, dc.alpha)],
+  };
+}
+
 // ---------- FLOCK ----------
 let _lastFlock = null; // most recently created flock (keyboard shortcuts act on it)
 
 // props r() can move. Numbers are multiplied; colors use HSB ranges
-const _NUM_PROPS = ['rad', 'spd', 'wnd', 'per', 'coh', 'ali', 'sep'];
+const _NUM_PROPS = ['rad', 'spd', 'wild', 'see', 'gap', 'sync'];
 const _COL_PROPS = ['hue', 'sat', 'bri', 'alpha'];
 
 class Flock {
   constructor(n = 20, o = {}) {
     this.birds = [];
     this._t = random(1000);
+    this._roll = _rollDefaults(); // random starting values, kept for re-runs
     this._reset(o);
     this.add(n);
     _lastFlock = this;
@@ -274,24 +309,22 @@ class Flock {
   // every setting back to its default (used by the constructor and
   // when a re-run reuses this flock, so deleted calls stop applying)
   _reset(o = {}) {
-    this.col(o.col ?? 255);        // color
-    this._rad = o.rad ?? 6;        // radius
-    this._spd = o.spd ?? 2;        // base (and max) speed
+    this.col(o.col ?? color(...this._roll.col)); // color
+    this._rad = o.rad ?? this._roll.rad;        // radius
+    this._spd = o.spd ?? this._roll.spd;        // base (and max) speed
     this._nsc = o.nsc ?? 0.005;    // noise scale (drift)
     this._swl = o.swl ?? 2;        // turns of the noise field
     this._dt  = o.dt  ?? 0.004;    // noise time speed
-    // flocking rules (Reynolds boids). All OFF by default:
-    // a new flock just wanders. Turn them on with flocking()
-    // or one by one with coh() / ali() / sep()
-    this._per = o.per ?? 70;       // neighbor perception radius
-    this._wC  = o.coh ?? 0;        // cohesion weight   (pull to the group)
-    this._wA  = o.ali ?? 0;        // alignment weight  (follow neighbors)
-    this._wS  = o.sep ?? 0;        // separation weight (avoid crowding)
-    this._wnd = o.wnd ?? 0.3;      // noise drift weight (0 = pure boids)
+    // flocking rules. Starting values are random (flocks.config.js);
+    // gap(0) and sync(0) turn the rules off
+    this._gap  = o.gap  ?? this._roll.gap;      // comfortable distance in px (0 = off)
+    this._sync = o.sync ?? this._roll.sync;      // fly like the neighbors, 0..1
+    this._wild = o.wild ?? this._roll.wild;    // improvisation, 0..1
+    this._see  = o.see  ?? this._roll.see;     // how far each bird sees, px
     this._dir = o.dir ?? 0;        // main heading (angle in radians)
     this._dvr = o.dvr ?? 0.5;      // field variability (0 = almost straight)
     this._wD  = o.wDir ?? 0;       // heading weight (0 = off)
-    this._line = o.line ?? false;  // continuous stroke instead of circles
+    this._line = o.line ?? this._roll.line;  // continuous stroke instead of circles
     this._rx  = [];                // sound reactions: {prop, fn, a, b}
                                    // empty: NO reactions by default;
                                    // add them with r()
@@ -315,15 +348,11 @@ class Flock {
   spd(s) { this._spd = s; return this; }
   nsc(s) { this._nsc = s; return this; }
   swl(s) { this._swl = s; return this; }
-  // --- flocking rules ---
-  per(r) { this._per = r; return this; }   // perception radius
-  coh(w) { this._wC  = w; return this; }   // pull to the group
-  ali(w) { this._wA  = w; return this; }   // align with neighbors
-  sep(w) { this._wS  = w; return this; }   // keep distance
-  wnd(w) { this._wnd = w; return this; }   // noise drift
-  // classic boids in one call: flocking() on, flocking(0) off,
-  // flocking(2) twice as strong
-  flocking(w = 1) { return this.coh(w).ali(w).sep(w * 1.5); }
+  // --- flocking ---
+  gap(px)  { this._gap  = px; return this; }  // comfortable distance (0 = off)
+  sync(x)  { this._sync = x;  return this; }  // fly the same way (0..1)
+  wild(x)  { this._wild = x;  return this; }  // improvisation (0..1)
+  see(px)  { this._see  = px; return this; }  // how far they see
   // --- main heading (noise field) ---
   // a: angle in radians · v: variability 0..1 (0 = almost a
   // straight line, 1 = very variable) · w: steering weight (1 by
@@ -349,7 +378,7 @@ class Flock {
   // fn: bass / mid / treble / amp / beat / () => ... (0..1)
   // r(prop, fn, x)         multiplier: ×1 when fn = 0 → ×x when fn = 1
   // r(prop, fn, min, max)  range: min when fn = 0 → max when fn = 1
-  // prop: 'rad' 'spd' 'wnd' 'per' 'coh' 'ali' 'sep'
+  // prop: 'rad' 'spd' 'wild' 'see' 'gap' 'sync'
   //       'hue' (0..360) 'sat' 'bri' (0..100) 'alpha' (0..255)
   r(prop, fn, a = 2, b) {
     if (!_NUM_PROPS.includes(prop) && !_COL_PROPS.includes(prop)) {
@@ -364,16 +393,19 @@ class Flock {
   _vals() {
     const [hue, sat, bri] = this._hsb;
     const v = {
-      rad: this._rad, spd: this._spd, wnd: this._wnd, per: this._per,
-      coh: this._wC, ali: this._wA, sep: this._wS,
+      rad: _num(this._rad, 6), spd: _num(this._spd, 2), wild: _num(this._wild),
+      see: _num(this._see, 70),
+      gap: _num(this._gap), sync: _num(this._sync),
+      dir: _num(this._dir), dvr: _num(this._dvr, 0.5), wD: _num(this._wD),
       hue, sat, bri, alpha: this._alpha,
     };
     for (const { prop, fn, a, b } of this._rx) {
-      const s = fn();
-      v[prop] = b === undefined ? v[prop] * (1 + s * (a - 1)) : a + s * (b - a);
+      const s = _num(fn);
+      const x = b === undefined ? v[prop] * (1 + s * (a - 1)) : a + s * (b - a);
+      if (Number.isFinite(x)) v[prop] = x;
     }
     for (const p of _NUM_PROPS) v[p] = Math.max(0, v[p]);
-    v.per = Math.max(1, v.per);
+    v.see = Math.max(1, v.see);
     v.hue = ((v.hue % 360) + 360) % 360;
     v.sat = constrain(v.sat, 0, 100);
     v.bri = constrain(v.bri, 0, 100);
@@ -389,8 +421,8 @@ class Flock {
     if (cols < 3 || rows < 3) return () => this.birds; // big radius: check everyone
     const cw = width / cols, ch = height / rows;
     const grid = Array.from({ length: cols * rows }, () => []);
-    const cell = b => [Math.min(cols - 1, Math.floor(b.p.x / cw)),
-                       Math.min(rows - 1, Math.floor(b.p.y / ch))];
+    const cell = b => [constrain(Math.floor(b.p.x / cw), 0, cols - 1) || 0,
+                       constrain(Math.floor(b.p.y / ch), 0, rows - 1) || 0];
     for (const b of this.birds) {
       const [cx, cy] = cell(b);
       grid[cy * cols + cx].push(b);
@@ -413,7 +445,7 @@ class Flock {
   update() {
     this._t += this._dt;
     const v = this._v = this._vals();
-    const near = this._neighbors(v.per);
+    const near = this._neighbors(Math.max(v.see, v.gap * 1.5));
     for (const b of this.birds) b.update(this, near(b), v);
     return this;
   }

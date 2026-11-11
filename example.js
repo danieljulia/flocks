@@ -12,21 +12,21 @@ function setup() {
   giant = flock(25)
     .col('#ff5c8a')
     .rad(4).spd(1.5)
-    .per(140).coh(1.8).sep(2).wnd(0.15)
+    .gap(40).see(140).wild(0.15)
     .r('rad', bass, 4);
 
   // small and fast: aligned swarm, speeds up with the treble
   smalls = flock(60)
     .col('#5cd6ff')
     .rad(2.5).spd(2.5)
-    .per(50).ali(2).coh(0.7).sep(1.5)
+    .gap(12).sync(0.9).see(50)
     .r('spd', treble, 5);
 
   // background mist: subtle but still flocks
   mist = flock(30)
     .col(color(200, 35))
     .rad(5).spd(0.8)
-    .per(90).flocking(0.8).wnd(0.4)
+    .gap(30).sync(0.4).see(90).wild(0.4)
     .r('rad', bass, 2.5);
 }
 
