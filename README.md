@@ -146,11 +146,26 @@ Props for `r()`: `rad spd wild see gap sync glow tail` and the color props `hue`
   signals use the whole 0..1 range in quiet and loud rooms. The FFT is computed once
   per frame and every signal is cached per frame.
 
+## Libraries
+
+flocks.js has **no other dependencies** and needs no build step. It uses:
+
+| Library | Version | What for | License |
+| --- | --- | --- | --- |
+| [p5.js](https://p5.js.org) | 1.11.3 | canvas and drawing, vectors, Perlin noise, the `draw()` loop | LGPL 2.1 |
+| [p5.sound](https://github.com/processing/p5.js-sound) | 1.0.1 | microphone input (`p5.AudioIn`) and the FFT that feeds the signals and the tempo detection | LGPL 2.1 |
+
+Both are bundled **unmodified** in `lib/`, so the project works offline (their license text
+is in `lib/LICENSE-LGPL-2.1.txt`). Everything else (flocks, tempo detection, editor, syntax
+highlighting) is plain JavaScript and the browser's own Canvas 2D and Web Audio APIs.
+It is meant to be used with [p5live](https://teddavis.org/p5live/) too, but does not need it.
+The editor colors are inspired by [Strudel](https://strudel.cc/).
+
 ## License
 
-flocks.js is free software under the **GNU LGPL v2.1** (see [`LICENSE`](LICENSE)), the same
-license as the libraries it is built on: [p5.js](https://github.com/processing/p5.js) and
-[p5.sound](https://github.com/processing/p5.js-sound), both LGPL 2.1 and bundled unmodified
-in `lib/`. In short: you can use flocks.js in any project, free or not, but changes to
-flocks.js itself have to stay under the LGPL. Your own sketches and the code you type in
-the editor are yours.
+flocks.js is released under the **MIT License** (see [`LICENSE`](LICENSE)): use it, change
+it, share it and sell it, in any project, as long as the license notice stays with it. Your
+own sketches and the code you type in the editor are yours.
+
+The libraries in `lib/` keep their own license (LGPL 2.1, see above); that does not affect
+how you can use flocks.js, since they are separate, unmodified files.
